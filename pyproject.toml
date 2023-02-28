@@ -1,0 +1,34 @@
+[build-system]
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
+
+[project]
+name = "rpds.py"
+description = "Python bindings to Rust's persistent data structures (rpds)"
+readme = "README.rst"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+keywords = ["data structures", "rust", "persistent"]
+authors = [
+  {email = "Julian+rpds@GrayVines.com"},
+  {name = "Julian Berman"},
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Operating System :: OS Independent",
+  "Programming Language :: Rust",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+
+]
+dynamic = ["version"]
+
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
