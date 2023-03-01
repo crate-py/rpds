@@ -12,17 +12,13 @@
   :alt: Supported Python versions
   :target: https://pypi.org/project/rpds-py/
 
-.. |CI| image:: https://github.com/Julian/rpds-py/workflows/CI/badge.svg
+.. |CI| image:: https://github.com/Julian/rpds.py/workflows/CI/badge.svg
   :alt: Build status
-  :target: https://github.com/Julian/rpds-py/actions?query=workflow%3ACI
+  :target: https://github.com/Julian/rpds.py/actions?query=workflow%3ACI
 
-.. |ReadTheDocs| image:: https://readthedocs.org/projects/rpds-py/badge/?version=stable&style=flat
-   :alt: ReadTheDocs status
-   :target: https://rpds-py.readthedocs.io/en/stable/
-
-.. |pre-commit| image:: https://results.pre-commit.ci/badge/github/Julian/rpds-py/main.svg
+.. |pre-commit| image:: https://results.pre-commit.ci/badge/github/Julian/rpds.py/main.svg
   :alt: pre-commit.ci status
-  :target: https://results.pre-commit.ci/latest/github/Julian/rpds-py/main
+  :target: https://results.pre-commit.ci/latest/github/Julian/rpds.py/main
 
 
 Python bindings to the Rust ``rpds`` crate.
