@@ -71,3 +71,33 @@ def test_remove_non_existing_element_raises_key_error():
         m1.remove("b")
 
     assert str(error.value) == "'b'"
+
+
+def test_various_iterations():
+    assert {"a", "b"} == set(HashTrieMap(a=1, b=2))
+    assert ["a", "b"] == sorted(HashTrieMap(a=1, b=2).keys())
+    assert [1, 2] == sorted(HashTrieMap(a=1, b=2).values())
+    assert {("a", 1), ("b", 2)} == set(HashTrieMap(a=1, b=2).items())
+
+    pm = HashTrieMap({str(k): k for k in range(100)})
+    assert len(pm) == len(pm.keys())
+    assert len(pm) == len(pm.values())
+    assert len(pm) == len(pm.items())
+    ks = pm.keys()
+    assert all(k in pm for k in ks)
+    assert all(k in ks for k in ks)
+    us = pm.items()
+    assert all(pm[k] == v for (k, v) in us)
+    vs = pm.values()
+    assert all(v in vs for v in vs)
+
+
+def test_initialization_with_two_elements():
+    map1 = HashTrieMap({"a": 2, "b": 3})
+    assert len(map1) == 2
+    assert map1["a"] == 2
+    assert map1["b"] == 3
+
+    map2 = map1.remove("a")
+    assert "a" not in map2
+    assert map2["b"] == 3

@@ -1,3 +1,5 @@
+use std::vec::IntoIter;
+
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
@@ -15,17 +17,31 @@ impl From<HashTrieMap<String, PyObject>> for HashTrieMapPy {
     }
 }
 
+#[pyclass(unsendable)]
+struct KeyIterator {
+    inner: IntoIter<String>,
+}
+
+#[pymethods]
+impl KeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<String> {
+        slf.inner.next()
+    }
+}
+
 #[pymethods]
 impl HashTrieMapPy {
     #[new]
     #[pyo3(signature = (value=None, **kwds))]
-    fn init(value: Option<&PyMapping>, kwds: Option<&PyDict>) -> PyResult<Self> {
+    fn init(value: Option<&PyDict>, kwds: Option<&PyDict>) -> PyResult<Self> {
         let mut map: HashTrieMap<String, PyObject> = HashTrieMap::new();
         if let Some(value) = value {
-            if let Ok(pyiter) = value.iter() {
-                for each in pyiter {
-                    map = map.insert(each?.to_string(), value.get_item("a")?.into());
-                }
+            for (k, v) in value {
+                map = map.insert(String::extract(k)?, v.into());
             }
         }
         if let Some(kwds) = kwds {
@@ -38,6 +54,15 @@ impl HashTrieMapPy {
 
     fn __contains__(&self, key: String) -> bool {
         self.inner.contains_key(&key)
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
+        Py::new(
+            slf.py(),
+            KeyIterator {
+                inner: slf.keys().into_iter(),
+            },
+        )
     }
 
     fn __getitem__(&self, key: String) -> PyResult<PyObject> {
@@ -59,6 +84,21 @@ impl HashTrieMapPy {
             .collect::<Vec<_>>()
             .join(" ");
         format!("HashTrieMap({{{}}})", contents)
+    }
+
+    fn keys(&self) -> Vec<String> {
+        self.inner.keys().map(|key| key.clone()).collect()
+    }
+
+    fn values(&self) -> Vec<&PyObject> {
+        self.inner.values().collect::<Vec<&PyObject>>().to_owned()
+    }
+
+    fn items(&self) -> Vec<(&String, &PyObject)> {
+        self.inner
+            .iter()
+            .collect::<Vec<(&String, &PyObject)>>()
+            .to_owned()
     }
 
     fn remove(&self, key: String) -> PyResult<HashTrieMapPy> {
