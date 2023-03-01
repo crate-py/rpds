@@ -82,7 +82,7 @@ impl HashTrieMapPy {
             .into_iter()
             .map(|(key, _value)| format!("{}: <value>", key.as_str()))
             .collect::<Vec<_>>()
-            .join(" ");
+            .join(", ");
         format!("HashTrieMap({{{}}})", contents)
     }
 
