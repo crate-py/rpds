@@ -28,6 +28,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 from collections.abc import Hashable, Mapping
 
+import pytest
 from rpds import HashTrieMap
 
 
@@ -53,3 +54,20 @@ def test_initialization_with_one_element():
     empty_map = the_map.remove("a")
     assert len(empty_map) == 0
     assert "a" not in empty_map
+
+
+def test_get_non_existing_raises_key_error():
+    m1 = HashTrieMap()
+    with pytest.raises(KeyError) as error:
+        m1["foo"]
+
+    assert str(error.value) == "'foo'"
+
+
+def test_remove_non_existing_element_raises_key_error():
+    m1 = HashTrieMap(a=1)
+
+    with pytest.raises(KeyError) as error:
+        m1.remove("b")
+
+    assert str(error.value) == "'b'"

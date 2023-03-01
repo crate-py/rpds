@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use rpds::{HashTrieMap, HashTrieSet};
 
@@ -17,13 +18,19 @@ impl From<HashTrieMap<String, PyObject>> for HashTrieMapPy {
 #[pymethods]
 impl HashTrieMapPy {
     #[new]
-    fn init(value: Option<&PyMapping>) -> PyResult<Self> {
+    #[pyo3(signature = (value=None, **kwds))]
+    fn init(value: Option<&PyMapping>, kwds: Option<&PyDict>) -> PyResult<Self> {
         let mut map: HashTrieMap<String, PyObject> = HashTrieMap::new();
         if let Some(value) = value {
             if let Ok(pyiter) = value.iter() {
                 for each in pyiter {
                     map = map.insert(each?.to_string(), value.get_item("a")?.into());
                 }
+            }
+        }
+        if let Some(kwds) = kwds {
+            for (k, v) in kwds {
+                map = map.insert(String::extract(k)?, v.into());
             }
         }
         Ok(HashTrieMapPy { inner: map })
@@ -54,9 +61,12 @@ impl HashTrieMapPy {
         format!("HashTrieMap({{{}}})", contents)
     }
 
-    fn remove(&self, key: String) -> HashTrieMapPy {
-        HashTrieMapPy {
-            inner: self.inner.remove(&key),
+    fn remove(&self, key: String) -> PyResult<HashTrieMapPy> {
+        match self.inner.contains_key(&key) {
+            true => Ok(HashTrieMapPy {
+                inner: self.inner.remove(&key),
+            }),
+            false => Err(PyKeyError::new_err(key)),
         }
     }
 
