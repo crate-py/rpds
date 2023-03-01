@@ -1,13 +1,16 @@
+use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-use rpds::HashTrieMap;
+use rpds::{HashTrieMap, HashTrieSet};
 
-#[derive(Hash)]
-#[pyclass(mapping, name = "HashTrieMap")]
-struct HashTrieMapPy {}
+#[repr(transparent)]
+#[pyclass(name = "HashTrieMap", mapping, unsendable)]
+struct HashTrieMapPy {
+    inner: HashTrieMap<String, PyObject>,
+}
 
-impl From<HashTrieMap<String, PyAny>> for HashTrieMapPy {
-    fn from(_map: HashTrieMap<String, PyAny>) -> Self {
-        HashTrieMapPy {}
+impl From<HashTrieMap<String, PyObject>> for HashTrieMapPy {
+    fn from(map: HashTrieMap<String, PyObject>) -> Self {
+        HashTrieMapPy { inner: map }
     }
 }
 
@@ -15,35 +18,66 @@ impl From<HashTrieMap<String, PyAny>> for HashTrieMapPy {
 impl HashTrieMapPy {
     #[new]
     fn init(_value: &PyAny) -> Self {
-        HashTrieMapPy {}
+        HashTrieMapPy {
+            inner: HashTrieMap::new(),
+        }
     }
 
-    fn __getitem__(&self, key: &PyAny) -> PyResult<f64> {
-        Ok(0.0)
+    fn __getitem__(&self, key: String) -> PyResult<PyObject> {
+        match self.inner.get(&key.to_string()) {
+            Some(value) => Ok(value.to_owned()),
+            None => Err(PyKeyError::new_err(key.to_string())),
+        }
     }
 
-    fn insert(&self, key: &PyAny, value: &PyAny) -> PyResult<HashTrieMapPy> {
-        Ok(HashTrieMapPy {})
+    fn __len__(&self) -> PyResult<usize> {
+        Ok(self.inner.size().into())
+    }
+
+    fn __repr__(&self) -> String {
+        let contents = self
+            .inner
+            .into_iter()
+            .map(|(key, value)| key.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("HashTrieMap({{{}}})", contents)
+    }
+
+    fn insert(&self, key: String, value: &PyAny) -> PyResult<HashTrieMapPy> {
+        Ok(HashTrieMapPy {
+            inner: self.inner.insert(key.to_string(), value.into()),
+        })
     }
 }
 
-#[derive(Hash)]
-#[pyclass(name = "HashTrieSet")]
-struct HashTrieSetPy {}
+#[repr(transparent)]
+#[pyclass(name = "HashTrieSet", unsendable)]
+struct HashTrieSetPy {
+    inner: HashTrieSet<String>,
+}
 
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
     fn init() -> Self {
-        HashTrieSetPy {}
+        HashTrieSetPy {
+            inner: HashTrieSet::new(),
+        }
     }
 
-    fn insert(&self, value: &PyAny) -> PyResult<HashTrieSetPy> {
-        Ok(HashTrieSetPy {})
+    fn __len__(&self) -> PyResult<usize> {
+        Ok(self.inner.size().into())
+    }
+
+    fn insert(&self, value: String) -> PyResult<HashTrieSetPy> {
+        Ok(HashTrieSetPy {
+            inner: self.inner.insert(value.to_string()),
+        })
     }
 }
 
-#[derive(Hash)]
+#[repr(transparent)]
 #[pyclass(name = "List")]
 struct ListPy {}
 
