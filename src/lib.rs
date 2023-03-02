@@ -124,6 +124,10 @@ impl HashTrieMapPy {
         }
     }
 
+    fn get(&self, key: Key) -> Option<&PyObject> {
+        self.inner.get(&key)
+    }
+
     fn keys(&self) -> Vec<Key> {
         self.inner.keys().map(|key| key.clone()).collect()
     }
