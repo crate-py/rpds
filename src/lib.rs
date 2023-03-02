@@ -1,6 +1,8 @@
+use std::collections::hash_map::DefaultHasher;
 use std::vec::IntoIter;
 
 use pyo3::prelude::*;
+use pyo3::pyclass::CompareOp;
 use pyo3::types::PyDict;
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use rpds::{HashTrieMap, HashTrieSet};
@@ -92,6 +94,14 @@ impl HashTrieMapPy {
             "HashTrieMap({{{}}})",
             contents.collect::<Vec<_>>().join(", ")
         ))
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+        match op {
+            CompareOp::Eq => (self.inner.size() == other.inner.size()).into_py(py),
+            CompareOp::Ne => (self.inner.size() != other.inner.size()).into_py(py),
+            _ => py.NotImplemented(),
+        }
     }
 
     fn keys(&self) -> Vec<Key> {
