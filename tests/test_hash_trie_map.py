@@ -191,3 +191,25 @@ def test_equal():
 
     assert y == x
     assert not (y != x)
+
+
+def test_equal_with_different_insertion_order():
+    x = HashTrieMap([(str(i), i) for i in range(50)])
+    y = HashTrieMap([(str(i), i) for i in range(49, -1, -1)])
+
+    assert x == y
+    assert not (x != y)
+
+    assert y == x
+    assert not (y != x)
+
+
+def test_not_equal():
+    x = HashTrieMap(a=1, b=2, c=3)
+    y = HashTrieMap(a=1, b=2)
+
+    assert x != y
+    assert not (x == y)
+
+    assert y != x
+    assert not (y == x)

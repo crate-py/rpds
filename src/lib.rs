@@ -1,9 +1,8 @@
-use std::collections::hash_map::DefaultHasher;
 use std::vec::IntoIter;
 
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use rpds::{HashTrieMap, HashTrieSet};
 
@@ -37,23 +36,44 @@ impl KeyIterator {
     }
 }
 
+impl<'source> FromPyObject<'source> for HashTrieMapPy {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let mut ret = HashTrieMap::new();
+        if ob.is_instance_of::<PyList>()? {
+            let sequence: &PyList = ob.downcast()?;
+            for each in sequence.iter() {
+                let (k, v): (String, PyObject) = each.extract()?;
+                ret.insert_mut(k, v);
+            }
+        } else {
+            let dict: &PyDict = ob.downcast()?;
+            for (k, v) in dict {
+                ret.insert_mut(String::extract(k)?, v.extract()?);
+            }
+        }
+        Ok(HashTrieMapPy { inner: ret })
+    }
+}
+
 #[pymethods]
 impl HashTrieMapPy {
     #[new]
     #[pyo3(signature = (value=None, **kwds))]
-    fn init(value: Option<&PyDict>, kwds: Option<&PyDict>) -> PyResult<Self> {
-        let mut map: HashTrieMap<Key, PyObject> = HashTrieMap::new();
+    fn init(value: Option<HashTrieMapPy>, kwds: Option<&PyDict>) -> PyResult<Self> {
+        let mut map: HashTrieMapPy;
         if let Some(value) = value {
-            for (k, v) in value {
-                map = map.insert(Key::extract(k)?, v.into());
-            }
+            map = value;
+        } else {
+            map = HashTrieMapPy {
+                inner: HashTrieMap::new(),
+            };
         }
         if let Some(kwds) = kwds {
             for (k, v) in kwds {
-                map = map.insert(Key::extract(k)?, v.into());
+                map.inner.insert_mut(Key::extract(k)?, v.into());
             }
         }
-        Ok(HashTrieMapPy { inner: map })
+        Ok(map)
     }
 
     fn __contains__(&self, key: Key) -> bool {
