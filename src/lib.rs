@@ -9,7 +9,7 @@ use rpds::{HashTrieMap, HashTrieSet};
 type Key = String;
 
 #[repr(transparent)]
-#[pyclass(name = "HashTrieMap", mapping, unsendable)]
+#[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping, unsendable)]
 struct HashTrieMapPy {
     inner: HashTrieMap<Key, PyObject>,
 }
@@ -20,7 +20,7 @@ impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
     }
 }
 
-#[pyclass(unsendable)]
+#[pyclass(module = "rpds", unsendable)]
 struct KeyIterator {
     inner: IntoIter<Key>,
 }
@@ -156,7 +156,7 @@ impl HashTrieMapPy {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "HashTrieSet", unsendable)]
+#[pyclass(name = "HashTrieSet", module = "rpds", frozen, unsendable)]
 struct HashTrieSetPy {
     inner: HashTrieSet<Key>,
 }
@@ -233,7 +233,7 @@ impl HashTrieSetPy {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "List")]
+#[pyclass(name = "List", module = "rpds", frozen, sequence)]
 struct ListPy {}
 
 #[pymethods]
