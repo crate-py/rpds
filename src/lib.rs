@@ -5,21 +5,23 @@ use pyo3::types::PyDict;
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use rpds::{HashTrieMap, HashTrieSet};
 
+type Key = String;
+
 #[repr(transparent)]
 #[pyclass(name = "HashTrieMap", mapping, unsendable)]
 struct HashTrieMapPy {
-    inner: HashTrieMap<String, PyObject>,
+    inner: HashTrieMap<Key, PyObject>,
 }
 
-impl From<HashTrieMap<String, PyObject>> for HashTrieMapPy {
-    fn from(map: HashTrieMap<String, PyObject>) -> Self {
+impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
+    fn from(map: HashTrieMap<Key, PyObject>) -> Self {
         HashTrieMapPy { inner: map }
     }
 }
 
 #[pyclass(unsendable)]
 struct KeyIterator {
-    inner: IntoIter<String>,
+    inner: IntoIter<Key>,
 }
 
 #[pymethods]
@@ -28,7 +30,7 @@ impl KeyIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<String> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
         slf.inner.next()
     }
 }
@@ -38,21 +40,21 @@ impl HashTrieMapPy {
     #[new]
     #[pyo3(signature = (value=None, **kwds))]
     fn init(value: Option<&PyDict>, kwds: Option<&PyDict>) -> PyResult<Self> {
-        let mut map: HashTrieMap<String, PyObject> = HashTrieMap::new();
+        let mut map: HashTrieMap<Key, PyObject> = HashTrieMap::new();
         if let Some(value) = value {
             for (k, v) in value {
-                map = map.insert(String::extract(k)?, v.into());
+                map = map.insert(Key::extract(k)?, v.into());
             }
         }
         if let Some(kwds) = kwds {
             for (k, v) in kwds {
-                map = map.insert(String::extract(k)?, v.into());
+                map = map.insert(Key::extract(k)?, v.into());
             }
         }
         Ok(HashTrieMapPy { inner: map })
     }
 
-    fn __contains__(&self, key: String) -> bool {
+    fn __contains__(&self, key: Key) -> bool {
         self.inner.contains_key(&key)
     }
 
@@ -65,7 +67,7 @@ impl HashTrieMapPy {
         )
     }
 
-    fn __getitem__(&self, key: String) -> PyResult<PyObject> {
+    fn __getitem__(&self, key: Key) -> PyResult<PyObject> {
         match self.inner.get(&key.to_string()) {
             Some(value) => Ok(value.to_owned()),
             None => Err(PyKeyError::new_err(key.to_string())),
@@ -76,7 +78,7 @@ impl HashTrieMapPy {
         Ok(self.inner.size().into())
     }
 
-    fn __repr__(&self) -> String {
+    fn __repr__(&self) -> Key {
         let contents = self
             .inner
             .into_iter()
@@ -86,7 +88,7 @@ impl HashTrieMapPy {
         format!("HashTrieMap({{{}}})", contents)
     }
 
-    fn keys(&self) -> Vec<String> {
+    fn keys(&self) -> Vec<Key> {
         self.inner.keys().map(|key| key.clone()).collect()
     }
 
@@ -94,14 +96,14 @@ impl HashTrieMapPy {
         self.inner.values().collect::<Vec<&PyObject>>().to_owned()
     }
 
-    fn items(&self) -> Vec<(&String, &PyObject)> {
+    fn items(&self) -> Vec<(&Key, &PyObject)> {
         self.inner
             .iter()
-            .collect::<Vec<(&String, &PyObject)>>()
+            .collect::<Vec<(&Key, &PyObject)>>()
             .to_owned()
     }
 
-    fn remove(&self, key: String) -> PyResult<HashTrieMapPy> {
+    fn remove(&self, key: Key) -> PyResult<HashTrieMapPy> {
         match self.inner.contains_key(&key) {
             true => Ok(HashTrieMapPy {
                 inner: self.inner.remove(&key),
@@ -110,7 +112,7 @@ impl HashTrieMapPy {
         }
     }
 
-    fn insert(&self, key: String, value: &PyAny) -> PyResult<HashTrieMapPy> {
+    fn insert(&self, key: Key, value: &PyAny) -> PyResult<HashTrieMapPy> {
         Ok(HashTrieMapPy {
             inner: self.inner.insert(key.to_string(), value.into()),
         })
@@ -120,7 +122,7 @@ impl HashTrieMapPy {
 #[repr(transparent)]
 #[pyclass(name = "HashTrieSet", unsendable)]
 struct HashTrieSetPy {
-    inner: HashTrieSet<String>,
+    inner: HashTrieSet<Key>,
 }
 
 #[pymethods]
@@ -136,7 +138,7 @@ impl HashTrieSetPy {
         Ok(self.inner.size().into())
     }
 
-    fn insert(&self, value: String) -> PyResult<HashTrieSetPy> {
+    fn insert(&self, value: Key) -> PyResult<HashTrieSetPy> {
         Ok(HashTrieSetPy {
             inner: self.inner.insert(value.to_string()),
         })
