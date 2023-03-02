@@ -78,14 +78,20 @@ impl HashTrieMapPy {
         Ok(self.inner.size().into())
     }
 
-    fn __repr__(&self) -> Key {
-        let contents = self
-            .inner
-            .into_iter()
-            .map(|(key, _value)| format!("{}: <value>", key.as_str()))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("HashTrieMap({{{}}})", contents)
+    fn __repr__(&self, py: Python) -> PyResult<String> {
+        let contents = self.inner.into_iter().map(|(k, v)| {
+            format!(
+                "{:?}: {}",
+                k.as_str(),
+                v.call_method0(py, "__repr__")
+                    .and_then(|r| r.extract::<String>(py))
+                    .unwrap_or("<repr error>".to_owned())
+            )
+        });
+        Ok(format!(
+            "HashTrieMap({{{}}})",
+            contents.collect::<Vec<_>>().join(", ")
+        ))
     }
 
     fn keys(&self) -> Vec<Key> {
