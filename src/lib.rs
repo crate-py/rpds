@@ -42,13 +42,13 @@ impl<'source> FromPyObject<'source> for HashTrieMapPy {
         if ob.is_instance_of::<PyList>()? {
             let sequence: &PyList = ob.downcast()?;
             for each in sequence.iter() {
-                let (k, v): (String, PyObject) = each.extract()?;
+                let (k, v): (Key, PyObject) = each.extract()?;
                 ret.insert_mut(k, v);
             }
         } else {
             let dict: &PyDict = ob.downcast()?;
             for (k, v) in dict {
-                ret.insert_mut(String::extract(k)?, v.extract()?);
+                ret.insert_mut(Key::extract(k)?, v.extract()?);
             }
         }
         Ok(HashTrieMapPy { inner: ret })
@@ -90,9 +90,9 @@ impl HashTrieMapPy {
     }
 
     fn __getitem__(&self, key: Key) -> PyResult<PyObject> {
-        match self.inner.get(&key.to_string()) {
+        match self.inner.get(&key) {
             Some(value) => Ok(value.to_owned()),
-            None => Err(PyKeyError::new_err(key.to_string())),
+            None => Err(PyKeyError::new_err(key)),
         }
     }
 
@@ -103,10 +103,10 @@ impl HashTrieMapPy {
     fn __repr__(&self, py: Python) -> PyResult<String> {
         let contents = self.inner.into_iter().map(|(k, v)| {
             format!(
-                "{:?}: {}",
-                k.as_str(),
+                "{}: {}",
+                k.into_py(py),
                 v.call_method0(py, "__repr__")
-                    .and_then(|r| r.extract::<String>(py))
+                    .and_then(|r| r.extract(py))
                     .unwrap_or("<repr error>".to_owned())
             )
         });
@@ -150,7 +150,7 @@ impl HashTrieMapPy {
 
     fn insert(&self, key: Key, value: &PyAny) -> PyResult<HashTrieMapPy> {
         Ok(HashTrieMapPy {
-            inner: self.inner.insert(key.to_string(), value.into()),
+            inner: self.inner.insert(Key::from(key), value.into()),
         })
     }
 }
@@ -166,7 +166,7 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
         let mut ret = HashTrieSet::new();
         let sequence: &PyList = ob.downcast()?;
         for each in sequence.iter() {
-            let k: String = each.extract()?;
+            let k: Key = each.extract()?;
             ret.insert_mut(k);
         }
         Ok(HashTrieSetPy { inner: ret })
@@ -201,7 +201,7 @@ impl HashTrieSetPy {
     }
 
     fn __repr__(&self) -> PyResult<String> {
-        let contents = self.inner.into_iter().map(|k| format!("{:?}", k.as_str()));
+        let contents = self.inner.into_iter().map(|k| format!("{:?}", k));
         Ok(format!(
             "HashTrieSet([{}])",
             contents.collect::<Vec<_>>().join(", ")
@@ -218,7 +218,7 @@ impl HashTrieSetPy {
 
     fn insert(&self, value: Key) -> PyResult<HashTrieSetPy> {
         Ok(HashTrieSetPy {
-            inner: self.inner.insert(value.to_string()),
+            inner: self.inner.insert(Key::from(value)),
         })
     }
 
