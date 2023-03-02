@@ -161,23 +161,74 @@ struct HashTrieSetPy {
     inner: HashTrieSet<Key>,
 }
 
+impl<'source> FromPyObject<'source> for HashTrieSetPy {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let mut ret = HashTrieSet::new();
+        let sequence: &PyList = ob.downcast()?;
+        for each in sequence.iter() {
+            let k: String = each.extract()?;
+            ret.insert_mut(k);
+        }
+        Ok(HashTrieSetPy { inner: ret })
+    }
+}
+
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
-    fn init() -> Self {
-        HashTrieSetPy {
-            inner: HashTrieSet::new(),
+    fn init(value: Option<HashTrieSetPy>) -> PyResult<Self> {
+        if let Some(value) = value {
+            Ok(value)
+        } else {
+            Ok(HashTrieSetPy {
+                inner: HashTrieSet::new(),
+            })
         }
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
+        let iter = slf
+            .inner
+            .iter()
+            .map(|k| k.to_owned())
+            .collect::<Vec<_>>()
+            .into_iter();
+        Py::new(slf.py(), KeyIterator { inner: iter })
     }
 
     fn __len__(&self) -> PyResult<usize> {
         Ok(self.inner.size().into())
     }
 
+    fn __repr__(&self) -> PyResult<String> {
+        let contents = self.inner.into_iter().map(|k| format!("{:?}", k.as_str()));
+        Ok(format!(
+            "HashTrieSet([{}])",
+            contents.collect::<Vec<_>>().join(", ")
+        ))
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+        match op {
+            CompareOp::Eq => (self.inner.size() == other.inner.size()).into_py(py),
+            CompareOp::Ne => (self.inner.size() != other.inner.size()).into_py(py),
+            _ => py.NotImplemented(),
+        }
+    }
+
     fn insert(&self, value: Key) -> PyResult<HashTrieSetPy> {
         Ok(HashTrieSetPy {
             inner: self.inner.insert(value.to_string()),
         })
+    }
+
+    fn remove(&self, value: Key) -> PyResult<HashTrieSetPy> {
+        match self.inner.contains(&value) {
+            true => Ok(HashTrieSetPy {
+                inner: self.inner.remove(&value),
+            }),
+            false => Err(PyKeyError::new_err(value)),
+        }
     }
 }
 
