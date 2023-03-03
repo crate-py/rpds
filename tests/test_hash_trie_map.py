@@ -241,3 +241,46 @@ def test_update_no_arguments():
     x = HashTrieMap(a=1)
 
     assert x.update() == x
+
+
+class HashDummy:
+    def __hash__(self):
+        return 6528039219058920  # Hash of '33'
+
+    def __eq__(self, other):
+        return self is other
+
+
+def test_iteration_with_many_elements():
+    values = list(range(0, 2000))
+    keys = [str(x) for x in values]
+    init_dict = dict(zip(keys, values))
+
+    hash_dummy1 = HashDummy()
+    hash_dummy2 = HashDummy()
+
+    # Throw in a couple of hash collision nodes to tests
+    # those properly as well
+    init_dict[hash_dummy1] = 12345
+    init_dict[hash_dummy2] = 54321
+    a_map = HashTrieMap(init_dict)
+
+    actual_values = set()
+    actual_keys = set()
+
+    for k, v in a_map.items():
+        actual_values.add(v)
+        actual_keys.add(k)
+
+    assert actual_keys == set(keys + [hash_dummy1, hash_dummy2])
+    assert actual_values == set(values + [12345, 54321])
+
+
+def test_str():
+    s = str(HashTrieMap({1: 2, 3: 4}))
+    assert s == "HashTrieMap({1: 2, 3: 4})" or s == "HashTrieMap({3: 4, 1: 2})"
+
+
+def test_empty_truthiness():
+    assert HashTrieMap(a=1)
+    assert not HashTrieMap()
