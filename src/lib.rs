@@ -1,11 +1,12 @@
 use std::hash::{Hash, Hasher};
 use std::vec::IntoIter;
 
+use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyList, PyTuple};
+use pyo3::types::{PyDict, PyIterator, PyList, PyTuple};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer};
-use rpds::{HashTrieMap, HashTrieSet};
+use rpds::{HashTrieMap, HashTrieSet, List};
 
 #[derive(Clone, Debug)]
 struct Key {
@@ -301,14 +302,126 @@ impl HashTrieSetPy {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "List", module = "rpds", frozen, sequence)]
-struct ListPy {}
+#[pyclass(name = "List", module = "rpds", frozen, sequence, unsendable)]
+struct ListPy {
+    inner: List<PyObject>,
+}
+
+impl From<List<PyObject>> for ListPy {
+    fn from(elements: List<PyObject>) -> Self {
+        ListPy { inner: elements }
+    }
+}
+
+impl<'source> FromPyObject<'source> for ListPy {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let mut ret = List::new();
+        let reversed: &PyIterator = ob.call_method0("__reversed__")?.downcast()?;
+        for each in reversed {
+            ret.push_front_mut(each?.extract()?);
+        }
+        Ok(ListPy { inner: ret })
+    }
+}
 
 #[pymethods]
 impl ListPy {
     #[new]
-    fn init() -> Self {
-        ListPy {}
+    #[pyo3(signature = (*elements))]
+    fn init(elements: &PyTuple) -> PyResult<Self> {
+        let mut ret: ListPy;
+        if elements.len() == 1 {
+            ret = elements.get_item(0)?.extract()?;
+        } else {
+            ret = ListPy { inner: List::new() };
+            if elements.len() > 1 {
+                for each in (0..elements.len()).rev() {
+                    ret.inner
+                        .push_front_mut(elements.get_item(each)?.extract()?);
+                }
+            }
+        }
+        Ok(ret)
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.len()
+    }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|k| {
+            k.into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("List([{}])", contents.collect::<Vec<_>>().join(", "))
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
+        match op {
+            CompareOp::Eq => Ok((self.inner.len() == other.inner.len()
+                && self
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| PyAny::eq(e1.extract(py)?, e2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
+            _ => Ok(py.NotImplemented()),
+        }
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<ListIterator>> {
+        let iter = slf
+            .inner
+            .iter()
+            .map(|k| k.to_owned())
+            .collect::<Vec<_>>()
+            .into_iter();
+        Py::new(slf.py(), ListIterator { inner: iter })
+    }
+
+    fn __reversed__(&self) -> ListPy {
+        ListPy {
+            inner: self.inner.reverse(),
+        }
+    }
+
+    #[getter]
+    fn first(&self) -> PyResult<&PyObject> {
+        self.inner
+            .first()
+            .ok_or_else(|| PyIndexError::new_err("empty list has no first element"))
+    }
+
+    fn push_front(&self, other: PyObject) -> ListPy {
+        ListPy {
+            inner: self.inner.push_front(other),
+        }
+    }
+
+    #[getter]
+    fn rest(&self) -> ListPy {
+        let mut inner = self.inner.clone();
+        inner.drop_first_mut();
+        ListPy { inner }
+    }
+}
+
+#[pyclass(module = "rpds", unsendable)]
+struct ListIterator {
+    inner: IntoIter<PyObject>,
+}
+
+#[pymethods]
+impl ListIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        slf.inner.next()
     }
 }
 
