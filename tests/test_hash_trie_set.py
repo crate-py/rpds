@@ -129,4 +129,4 @@ def test_supports_set_comparisons():
 
 def test_repr():
     rep = repr(HashTrieSet(["1", "2"]))
-    assert rep == 'HashTrieSet(["1", "2"])' or rep == 'HashTrieSet(["2", "1"])'
+    assert rep == "HashTrieSet(['1', '2'])" or rep == "HashTrieSet(['2', '1'])"

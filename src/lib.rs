@@ -1,12 +1,57 @@
+use std::hash::{Hash, Hasher};
 use std::vec::IntoIter;
 
-use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyList};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
+use pyo3::{prelude::*, AsPyPointer};
 use rpds::{HashTrieMap, HashTrieSet};
 
-type Key = String;
+#[derive(Clone, Debug)]
+struct Key {
+    hash: isize,
+    inner: PyObject,
+}
+
+impl Hash for Key {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_isize(self.hash);
+    }
+}
+
+impl Eq for Key {}
+
+impl PartialEq for Key {
+    fn eq(&self, other: &Self) -> bool {
+        Python::with_gil(|py| {
+            self.inner
+                .call_method1(py, "__eq__", (&other.inner,))
+                .and_then(|value| value.extract(py))
+                .expect("__eq__ failed!")
+        })
+    }
+}
+
+impl IntoPy<PyObject> for Key {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        self.inner.into_py(py)
+    }
+}
+
+impl AsPyPointer for Key {
+    fn as_ptr(&self) -> *mut pyo3::ffi::PyObject {
+        self.inner.as_ptr()
+    }
+}
+
+impl<'source> FromPyObject<'source> for Key {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        Ok(Key {
+            hash: ob.hash()?,
+            inner: ob.into(),
+        })
+    }
+}
 
 #[repr(transparent)]
 #[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping, unsendable)]
@@ -204,8 +249,13 @@ impl HashTrieSetPy {
         self.inner.size().into()
     }
 
-    fn __repr__(&self) -> String {
-        let contents = self.inner.into_iter().map(|k| format!("{:?}", k));
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|k| {
+            k.into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
         format!("HashTrieSet([{}])", contents.collect::<Vec<_>>().join(", "))
     }
 
