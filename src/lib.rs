@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::vec::IntoIter;
 
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer};
 use rpds::{HashTrieMap, HashTrieSet};
@@ -172,6 +172,12 @@ impl HashTrieMapPy {
             .to_owned()
     }
 
+    fn insert(&self, key: Key, value: &PyAny) -> HashTrieMapPy {
+        HashTrieMapPy {
+            inner: self.inner.insert(Key::from(key), value.into()),
+        }
+    }
+
     fn remove(&self, key: Key) -> PyResult<HashTrieMapPy> {
         match self.inner.contains_key(&key) {
             true => Ok(HashTrieMapPy {
@@ -181,10 +187,21 @@ impl HashTrieMapPy {
         }
     }
 
-    fn insert(&self, key: Key, value: &PyAny) -> HashTrieMapPy {
-        HashTrieMapPy {
-            inner: self.inner.insert(Key::from(key), value.into()),
+    #[pyo3(signature = (*maps, **kwds))]
+    fn update(&self, maps: &PyTuple, kwds: Option<&PyDict>) -> PyResult<HashTrieMapPy> {
+        let mut inner = self.inner.clone();
+        for value in maps {
+            let map = HashTrieMapPy::extract(value)?;
+            for (k, v) in &map.inner {
+                inner.insert_mut(k.to_owned(), v.to_owned());
+            }
         }
+        if let Some(kwds) = kwds {
+            for (k, v) in kwds {
+                inner.insert_mut(Key::extract(k)?, v.extract()?);
+            }
+        }
+        Ok(HashTrieMapPy { inner })
     }
 }
 

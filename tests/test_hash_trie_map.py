@@ -229,3 +229,15 @@ def test_not_equal_to_dict():
 
     assert y != x
     assert not (y == x)
+
+
+def test_update_one_argument():
+    x = HashTrieMap(a=1)
+
+    assert x.update({"b": "2"}) == HashTrieMap(a=1, b=2)
+
+
+def test_update_no_arguments():
+    x = HashTrieMap(a=1)
+
+    assert x.update() == x
