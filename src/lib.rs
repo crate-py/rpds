@@ -96,11 +96,11 @@ impl HashTrieMapPy {
         }
     }
 
-    fn __len__(&self) -> PyResult<usize> {
-        Ok(self.inner.size().into())
+    fn __len__(&self) -> usize {
+        self.inner.size().into()
     }
 
-    fn __repr__(&self, py: Python) -> PyResult<String> {
+    fn __repr__(&self, py: Python) -> String {
         let contents = self.inner.into_iter().map(|(k, v)| {
             format!(
                 "{}: {}",
@@ -110,10 +110,10 @@ impl HashTrieMapPy {
                     .unwrap_or("<repr error>".to_owned())
             )
         });
-        Ok(format!(
+        format!(
             "HashTrieMap({{{}}})",
             contents.collect::<Vec<_>>().join(", ")
-        ))
+        )
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
@@ -152,10 +152,10 @@ impl HashTrieMapPy {
         }
     }
 
-    fn insert(&self, key: Key, value: &PyAny) -> PyResult<HashTrieMapPy> {
-        Ok(HashTrieMapPy {
+    fn insert(&self, key: Key, value: &PyAny) -> HashTrieMapPy {
+        HashTrieMapPy {
             inner: self.inner.insert(Key::from(key), value.into()),
-        })
+        }
     }
 }
 
@@ -180,13 +180,13 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
-    fn init(value: Option<HashTrieSetPy>) -> PyResult<Self> {
+    fn init(value: Option<HashTrieSetPy>) -> Self {
         if let Some(value) = value {
-            Ok(value)
+            value
         } else {
-            Ok(HashTrieSetPy {
+            HashTrieSetPy {
                 inner: HashTrieSet::new(),
-            })
+            }
         }
     }
 
@@ -200,16 +200,13 @@ impl HashTrieSetPy {
         Py::new(slf.py(), KeyIterator { inner: iter })
     }
 
-    fn __len__(&self) -> PyResult<usize> {
-        Ok(self.inner.size().into())
+    fn __len__(&self) -> usize {
+        self.inner.size().into()
     }
 
-    fn __repr__(&self) -> PyResult<String> {
+    fn __repr__(&self) -> String {
         let contents = self.inner.into_iter().map(|k| format!("{:?}", k));
-        Ok(format!(
-            "HashTrieSet([{}])",
-            contents.collect::<Vec<_>>().join(", ")
-        ))
+        format!("HashTrieSet([{}])", contents.collect::<Vec<_>>().join(", "))
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
@@ -220,10 +217,10 @@ impl HashTrieSetPy {
         }
     }
 
-    fn insert(&self, value: Key) -> PyResult<HashTrieSetPy> {
-        Ok(HashTrieSetPy {
+    fn insert(&self, value: Key) -> HashTrieSetPy {
+        HashTrieSetPy {
             inner: self.inner.insert(Key::from(value)),
-        })
+        }
     }
 
     fn remove(&self, value: Key) -> PyResult<HashTrieSetPy> {
