@@ -20,22 +20,6 @@ impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
     }
 }
 
-#[pyclass(module = "rpds", unsendable)]
-struct KeyIterator {
-    inner: IntoIter<Key>,
-}
-
-#[pymethods]
-impl KeyIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        slf.inner.next()
-    }
-}
-
 impl<'source> FromPyObject<'source> for HashTrieMapPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let mut ret = HashTrieMap::new();
@@ -156,6 +140,22 @@ impl HashTrieMapPy {
         HashTrieMapPy {
             inner: self.inner.insert(Key::from(key), value.into()),
         }
+    }
+}
+
+#[pyclass(module = "rpds", unsendable)]
+struct KeyIterator {
+    inner: IntoIter<Key>,
+}
+
+#[pymethods]
+impl KeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
+        slf.inner.next()
     }
 }
 
