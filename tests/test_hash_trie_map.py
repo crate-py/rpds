@@ -43,6 +43,11 @@ def test_instance_of_map():
     assert isinstance(HashTrieMap(), Mapping)
 
 
+def test_literalish_works():
+    assert HashTrieMap() == HashTrieMap()
+    assert HashTrieMap(a=1, b=2) == HashTrieMap({"a": 1, "b": 2})
+
+
 def test_empty_initialization():
     a_map = HashTrieMap()
     assert len(a_map) == 0
@@ -82,7 +87,7 @@ def test_various_iterations():
     assert [1, 2] == sorted(HashTrieMap(a=1, b=2).values())
     assert {("a", 1), ("b", 2)} == set(HashTrieMap(a=1, b=2).items())
 
-    pm = HashTrieMap({str(k): k for k in range(100)})
+    pm = HashTrieMap({k: k for k in range(100)})
     assert len(pm) == len(pm.keys())
     assert len(pm) == len(pm.values())
     assert len(pm) == len(pm.items())
@@ -153,8 +158,8 @@ def test_hash():
 
 
 def test_same_hash_when_content_the_same_but_underlying_vector_size_differs():
-    x = HashTrieMap({str(x): x for x in range(1000)})
-    y = HashTrieMap({"10": 10, "200": 200, "700": 700})
+    x = HashTrieMap({x: x for x in range(1000)})
+    y = HashTrieMap({10: 10, 200: 200, 700: 700})
 
     for z in x:
         if z not in y:
@@ -194,8 +199,8 @@ def test_equal():
 
 
 def test_equal_with_different_insertion_order():
-    x = HashTrieMap([(str(i), i) for i in range(50)])
-    y = HashTrieMap([(str(i), i) for i in range(49, -1, -1)])
+    x = HashTrieMap([(i, i) for i in range(50)])
+    y = HashTrieMap([(i, i) for i in range(49, -1, -1)])
 
     assert x == y
     assert not (x != y)
@@ -207,6 +212,17 @@ def test_equal_with_different_insertion_order():
 def test_not_equal():
     x = HashTrieMap(a=1, b=2, c=3)
     y = HashTrieMap(a=1, b=2)
+
+    assert x != y
+    assert not (x == y)
+
+    assert y != x
+    assert not (y == x)
+
+
+def test_not_equal_to_dict():
+    x = HashTrieMap(a=1, b=2, c=3)
+    y = dict(a=1, b=2, d=4)
 
     assert x != y
     assert not (x == y)
