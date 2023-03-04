@@ -155,5 +155,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            wheels/*
+            target/wheels/*
           generate_release_notes: true
