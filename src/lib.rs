@@ -69,10 +69,10 @@ impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
 impl<'source> FromPyObject<'source> for HashTrieMapPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let mut ret = HashTrieMap::new();
-        if ob.is_instance_of::<PyDict>()? {
-            let dict: &PyDict = ob.downcast()?;
-            for (k, v) in dict {
-                ret.insert_mut(Key::extract(k)?, v.extract()?);
+        if let Ok(mapping) = ob.downcast::<PyMapping>() {
+            for each in mapping.items()?.iter()? {
+                let (k, v): (Key, PyObject) = each?.extract()?;
+                ret.insert_mut(k, v);
             }
         } else {
             for each in ob.iter()? {
@@ -170,6 +170,17 @@ impl HashTrieMapPy {
             .iter()
             .collect::<Vec<(&Key, &PyObject)>>()
             .to_owned()
+    }
+
+    fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
+        match self.inner.contains_key(&key) {
+            true => Ok(HashTrieMapPy {
+                inner: self.inner.remove(&key),
+            }),
+            false => Ok(HashTrieMapPy {
+                inner: self.inner.clone(),
+            }),
+        }
     }
 
     fn insert(&self, key: Key, value: &PyAny) -> HashTrieMapPy {

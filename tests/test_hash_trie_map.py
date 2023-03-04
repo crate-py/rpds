@@ -126,6 +126,7 @@ def test_initialization_with_many_elements():
     assert new_map["1601"] == 1601
 
     # Some NOP properties
+    assert new_map.discard("18888") == new_map
     assert "19999" not in new_map
     assert new_map["1500"] == 1500
     assert new_map.insert("1500", new_map["1500"]) == new_map
@@ -229,6 +230,14 @@ def test_not_equal_to_dict():
 
     assert y != x
     assert not (y == x)
+
+
+def test_update_with_multiple_arguments():
+    # If same value is present in multiple sources, the rightmost is used.
+    x = HashTrieMap(a=1, b=2, c=3)
+    y = x.update(HashTrieMap(b=4, c=5), {"c": 6})
+
+    assert y == HashTrieMap(a=1, b=4, c=6)
 
 
 def test_update_one_argument():
