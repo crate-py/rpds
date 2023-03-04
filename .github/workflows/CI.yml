@@ -150,3 +150,10 @@ jobs:
         with:
           command: upload
           args: --skip-existing *
+      - name: Create a GitHub Release
+        if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            wheels/*
+          generate_release_notes: true
