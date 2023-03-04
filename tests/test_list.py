@@ -100,3 +100,8 @@ def test_repr():
 def test_hashing():
     assert hash(List([1, 2])) == hash(List([1, 2]))
     assert hash(List([1, 2])) != hash(List([2, 1]))
+
+
+def test_sequence():
+    m = List("asdf")
+    assert m == List(["a", "s", "d", "f"])

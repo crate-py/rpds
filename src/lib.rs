@@ -328,8 +328,9 @@ impl From<List<PyObject>> for ListPy {
 impl<'source> FromPyObject<'source> for ListPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let mut ret = List::new();
-        let reversed: &PyIterator = ob.call_method0("__reversed__")?.downcast()?;
-        for each in reversed {
+        let reversed = PyModule::import(ob.py(), "builtins")?.getattr("reversed")?;
+        let rob: &PyIterator = reversed.call1((ob,))?.iter()?;
+        for each in rob {
             ret.push_front_mut(each?.extract()?);
         }
         Ok(ListPy { inner: ret })
