@@ -231,9 +231,8 @@ struct HashTrieSetPy {
 impl<'source> FromPyObject<'source> for HashTrieSetPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let mut ret = HashTrieSet::new();
-        let sequence: &PyList = ob.downcast()?;
-        for each in sequence.iter() {
-            let k: Key = each.extract()?;
+        for each in ob.iter()? {
+            let k: Key = each?.extract()?;
             ret.insert_mut(k);
         }
         Ok(HashTrieSetPy { inner: ret })
@@ -274,7 +273,10 @@ impl HashTrieSetPy {
                 .and_then(|r| r.extract(py))
                 .unwrap_or("<repr failed>".to_owned())
         });
-        format!("HashTrieSet([{}])", contents.collect::<Vec<_>>().join(", "))
+        format!(
+            "HashTrieSet({{{}}})",
+            contents.collect::<Vec<_>>().join(", ")
+        )
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
@@ -288,6 +290,17 @@ impl HashTrieSetPy {
     fn insert(&self, value: Key) -> HashTrieSetPy {
         HashTrieSetPy {
             inner: self.inner.insert(Key::from(value)),
+        }
+    }
+
+    fn discard(&self, value: Key) -> PyResult<HashTrieSetPy> {
+        match self.inner.contains(&value) {
+            true => Ok(HashTrieSetPy {
+                inner: self.inner.remove(&value),
+            }),
+            false => Ok(HashTrieSetPy {
+                inner: self.inner.clone(),
+            }),
         }
     }
 
