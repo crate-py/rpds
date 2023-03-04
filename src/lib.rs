@@ -3,7 +3,7 @@ use std::vec::IntoIter;
 
 use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyIterator, PyTuple};
+use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer};
 use rpds::{HashTrieMap, HashTrieSet, List};
@@ -150,6 +150,15 @@ impl HashTrieMapPy {
             CompareOp::Eq => (self.inner.size() == other.inner.size()).into_py(py),
             CompareOp::Ne => (self.inner.size() != other.inner.size()).into_py(py),
             _ => py.NotImplemented(),
+        }
+    }
+
+    #[classmethod]
+    fn convert(_cls: &PyType, value: &PyAny, py: Python) -> PyResult<PyObject> {
+        if value.is_instance_of::<HashTrieMapPy>()? {
+            Ok(value.into())
+        } else {
+            Ok(HashTrieMapPy::extract(value)?.into_py(py))
         }
     }
 

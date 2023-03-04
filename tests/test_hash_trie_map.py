@@ -298,3 +298,13 @@ def test_empty_truthiness():
 def test_iterable():
     m = HashTrieMap((i, i * 2) for i in range(3))
     assert m == HashTrieMap({0: 0, 1: 2, 2: 4})
+
+
+def test_convert_hashtriemap():
+    m = HashTrieMap({i: i * 2 for i in range(3)})
+    assert HashTrieMap.convert({i: i * 2 for i in range(3)}) == m
+
+
+def test_fast_convert_hashtriemap():
+    m = HashTrieMap({i: i * 2 for i in range(3)})
+    assert HashTrieMap.convert(m) is m
