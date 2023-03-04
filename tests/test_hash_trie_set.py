@@ -137,3 +137,18 @@ def test_repr():
 
     rep = repr(HashTrieSet(["1", "2"]))
     assert rep == "HashTrieSet({'1', '2'})" or rep == "HashTrieSet({'2', '1'})"
+
+
+def test_update():
+    assert HashTrieSet([1, 2, 3]).update([3, 4, 4, 5]) == HashTrieSet(
+        [1, 2, 3, 4, 5]
+    )
+
+
+def test_update_no_elements():
+    s1 = HashTrieSet([1, 2])
+    assert s1.update([]) == s1
+
+
+def test_iterable():
+    assert HashTrieSet(iter("a")) == HashTrieSet(iter("a"))

@@ -311,6 +311,18 @@ impl HashTrieSetPy {
             false => Err(PyKeyError::new_err(value)),
         }
     }
+
+    #[pyo3(signature = (*iterables))]
+    fn update(&self, iterables: &PyTuple) -> PyResult<HashTrieSetPy> {
+        let mut inner = self.inner.clone();
+        for each in iterables {
+            let iter = each.iter()?;
+            for value in iter {
+                inner.insert_mut(Key::extract(value?)?.to_owned());
+            }
+        }
+        Ok(HashTrieSetPy { inner })
+    }
 }
 
 #[repr(transparent)]
