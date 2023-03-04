@@ -10,8 +10,8 @@ from typing import (
 )
 
 T = TypeVar("T")
-KT = TypeVar("KT")
-VT = TypeVar("VT")
+KT = TypeVar("KT", covariant=True)
+VT = TypeVar("VT", covariant=True)
 
 class HashTrieMap(Mapping[KT, VT]):
     def __init__(
