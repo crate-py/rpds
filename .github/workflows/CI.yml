@@ -108,7 +108,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --find-interpreter --sdist
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
