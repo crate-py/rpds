@@ -16,7 +16,7 @@ VT = TypeVar("VT")
 class HashTrieMap(Mapping[KT, VT]):
     def __init__(
         self,
-        value: Mapping[KT, VT] = {},
+        value: Mapping[KT, VT] | Iterable[tuple[KT, VT]] = {},
         **kwds: Mapping[KT, VT],
     ): ...
     def __getitem__(self, key: KT) -> VT: ...
