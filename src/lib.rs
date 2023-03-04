@@ -3,7 +3,7 @@ use std::vec::IntoIter;
 
 use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyIterator, PyList, PyTuple};
+use pyo3::types::{PyDict, PyIterator, PyTuple};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer};
 use rpds::{HashTrieMap, HashTrieSet, List};
@@ -69,16 +69,15 @@ impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
 impl<'source> FromPyObject<'source> for HashTrieMapPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         let mut ret = HashTrieMap::new();
-        if ob.is_instance_of::<PyList>()? {
-            let sequence: &PyList = ob.downcast()?;
-            for each in sequence.iter() {
-                let (k, v): (Key, PyObject) = each.extract()?;
-                ret.insert_mut(k, v);
-            }
-        } else {
+        if ob.is_instance_of::<PyDict>()? {
             let dict: &PyDict = ob.downcast()?;
             for (k, v) in dict {
                 ret.insert_mut(Key::extract(k)?, v.extract()?);
+            }
+        } else {
+            for each in ob.iter()? {
+                let (k, v): (Key, PyObject) = each?.extract()?;
+                ret.insert_mut(k, v);
             }
         }
         Ok(HashTrieMapPy { inner: ret })

@@ -284,3 +284,8 @@ def test_str():
 def test_empty_truthiness():
     assert HashTrieMap(a=1)
     assert not HashTrieMap()
+
+
+def test_iterable():
+    m = HashTrieMap((i, i * 2) for i in range(3))
+    assert m == HashTrieMap({0: 0, 1: 2, 2: 4})
