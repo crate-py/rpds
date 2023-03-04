@@ -3,7 +3,7 @@ requires = ["maturin>=0.14,<0.15"]
 build-backend = "maturin"
 
 [project]
-name = "rpds.py"
+name = "rpds-py"
 description = "Python bindings to Rust's persistent data structures (rpds)"
 readme = "README.rst"
 license = {text = "MIT"}
