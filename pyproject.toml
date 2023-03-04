@@ -29,5 +29,11 @@ classifiers = [
 ]
 dynamic = ["version"]
 
+[tool.isort]
+combine_as_imports = true
+from_first = true
+include_trailing_comma = true
+multi_line_output = 3
+
 [tool.maturin]
 features = ["pyo3/extension-module"]
