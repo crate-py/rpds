@@ -152,3 +152,23 @@ def test_update_no_elements():
 
 def test_iterable():
     assert HashTrieSet(iter("a")) == HashTrieSet(iter("a"))
+
+
+def test_more_eq():
+    # Non-pyrsistent-test-suite test
+    o = object()
+
+    assert HashTrieSet([o]) == HashTrieSet([o])
+    assert HashTrieSet([o, o]) == HashTrieSet([o, o])
+    assert HashTrieSet([o]) == HashTrieSet([o, o])
+    assert HashTrieSet() == HashTrieSet([])
+    assert not (HashTrieSet([1, 2]) == HashTrieSet([1, 3]))
+    assert not (HashTrieSet([o, 1]) == HashTrieSet([o, o]))
+    assert not (HashTrieSet([]) == HashTrieSet([o]))
+
+    assert HashTrieSet([1, 2]) != HashTrieSet([1, 3])
+    assert HashTrieSet([]) != HashTrieSet([o])
+    assert not (HashTrieSet([o]) != HashTrieSet([o]))
+    assert not (HashTrieSet([o, o]) != HashTrieSet([o, o]))
+    assert not (HashTrieSet([o]) != HashTrieSet([o, o]))
+    assert not (HashTrieSet() != HashTrieSet([]))

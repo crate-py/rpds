@@ -145,11 +145,25 @@ impl HashTrieMapPy {
         )
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
-            CompareOp::Eq => (self.inner.size() == other.inner.size()).into_py(py),
-            CompareOp::Ne => (self.inner.size() != other.inner.size()).into_py(py),
-            _ => py.NotImplemented(),
+            CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
+                && self
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(v1, v2)| PyAny::eq(v1.extract(py)?, v2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
+                || self
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(v1, v2)| PyAny::ne(v1.extract(py)?, v2))
+                    .all(|r| r.unwrap_or(true)))
+            .into_py(py)),
+            _ => Ok(py.NotImplemented()),
         }
     }
 
@@ -298,11 +312,21 @@ impl HashTrieSetPy {
         )
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
-            CompareOp::Eq => (self.inner.size() == other.inner.size()).into_py(py),
-            CompareOp::Ne => (self.inner.size() != other.inner.size()).into_py(py),
-            _ => py.NotImplemented(),
+            CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
+                && self
+                    .inner
+                    .iter()
+                    .all(|k| other.inner.contains(k)))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
+                || self
+                    .inner
+                    .iter()
+                    .any(|k| !other.inner.contains(k)))
+            .into_py(py)),
+            _ => Ok(py.NotImplemented()),
         }
     }
 
@@ -412,6 +436,14 @@ impl ListPy {
                     .zip(other.inner.iter())
                     .map(|(e1, e2)| PyAny::eq(e1.extract(py)?, e2))
                     .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.len() != other.inner.len()
+                || self
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| PyAny::ne(e1.extract(py)?, e2))
+                    .any(|r| r.unwrap_or(true)))
             .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }

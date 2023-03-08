@@ -105,3 +105,22 @@ def test_hashing():
 def test_sequence():
     m = List("asdf")
     assert m == List(["a", "s", "d", "f"])
+
+
+def test_more_eq():
+    # Non-pyrsistent-test-suite test
+    o = object()
+
+    assert List([o, o]) == List([o, o])
+    assert List([o]) == List([o])
+    assert List() == List([])
+    assert not (List([1, 2]) == List([1, 3]))
+    assert not (List([o]) == List([o, o]))
+    assert not (List([]) == List([o]))
+
+    assert List([1, 2]) != List([1, 3])
+    assert List([o]) != List([o, o])
+    assert List([]) != List([o])
+    assert not (List([o, o]) != List([o, o]))
+    assert not (List([o]) != List([o]))
+    assert not (List() != List([]))
