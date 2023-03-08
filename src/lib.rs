@@ -315,16 +315,10 @@ impl HashTrieSetPy {
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
             CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
-                && self
-                    .inner
-                    .iter()
-                    .all(|k| other.inner.contains(k)))
+                && self.inner.iter().all(|k| other.inner.contains(k)))
             .into_py(py)),
             CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
-                || self
-                    .inner
-                    .iter()
-                    .any(|k| !other.inner.contains(k)))
+                || self.inner.iter().any(|k| !other.inner.contains(k)))
             .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
