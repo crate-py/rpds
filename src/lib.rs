@@ -285,6 +285,22 @@ impl HashTrieSetPy {
         }
     }
 
+    fn __and__(&self, other: &Self) -> Self {
+        self.intersection(&other)
+    }
+
+    fn __or__(&self, other: &Self) -> Self {
+        self.union(&other)
+    }
+
+    fn __sub__(&self, other: &Self) -> Self {
+        self.difference(&other)
+    }
+
+    fn __xor__(&self, other: &Self) -> Self {
+        self.symmetric_difference(&other)
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
         let iter = slf
             .inner
@@ -348,6 +364,69 @@ impl HashTrieSetPy {
             }),
             false => Err(PyKeyError::new_err(value)),
         }
+    }
+
+    fn difference(&self, other: &Self) -> HashTrieSetPy {
+        let mut inner = self.inner.clone();
+        for value in other.inner.iter() {
+            inner.remove_mut(value);
+        }
+        HashTrieSetPy { inner }
+    }
+
+    fn intersection(&self, other: &Self) -> HashTrieSetPy {
+        let mut inner: HashTrieSet<Key> = HashTrieSet::new();
+        let larger: &HashTrieSet<Key>;
+        let iter;
+        if self.inner.size() > other.inner.size() {
+            larger = &self.inner;
+            iter = other.inner.iter();
+        } else {
+            larger = &other.inner;
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            if larger.contains(value) {
+                inner.insert_mut(value.to_owned());
+            }
+        }
+        HashTrieSetPy { inner }
+    }
+
+    fn symmetric_difference(&self, other: &Self) -> HashTrieSetPy {
+        let mut inner: HashTrieSet<Key>;
+        let iter;
+        if self.inner.size() > other.inner.size() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            if inner.contains(value) {
+                inner.remove_mut(value);
+            } else {
+                inner.insert_mut(value.to_owned());
+            }
+        }
+        HashTrieSetPy { inner }
+    }
+
+    fn union(&self, other: &Self) -> HashTrieSetPy {
+        let mut inner: HashTrieSet<Key>;
+        let iter;
+        if self.inner.size() > other.inner.size() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            inner.insert_mut(value.to_owned());
+        }
+        HashTrieSetPy { inner }
     }
 
     #[pyo3(signature = (*iterables))]

@@ -95,7 +95,6 @@ def test_contains():
     assert 4 not in s
 
 
-@pytest.mark.xfail(reason="Can't figure out inheriting collections.abc yet")
 def test_supports_set_operations():
     s1 = HashTrieSet([1, 2, 3])
     s2 = HashTrieSet([3, 4, 5])
