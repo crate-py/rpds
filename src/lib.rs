@@ -272,6 +272,10 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
     }
 }
 
+fn is_subset(one: &HashTrieSet<Key>, two: &HashTrieSet<Key>) -> bool {
+    one.iter().all(|v| two.contains(v))
+}
+
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
@@ -331,11 +335,15 @@ impl HashTrieSetPy {
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
             CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
-                && self.inner.iter().all(|k| other.inner.contains(k)))
+                && is_subset(&self.inner, &other.inner))
             .into_py(py)),
             CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
                 || self.inner.iter().any(|k| !other.inner.contains(k)))
             .into_py(py)),
+            CompareOp::Lt => Ok((self.inner.size() < other.inner.size()
+                && is_subset(&self.inner, &other.inner))
+            .into_py(py)),
+            CompareOp::Le => Ok(is_subset(&self.inner, &other.inner).into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
     }

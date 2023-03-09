@@ -112,7 +112,6 @@ def test_supports_set_operations():
     assert s1.symmetric_difference(s2) == s1 ^ s2
 
 
-@pytest.mark.xfail(reason="Can't figure out inheriting collections.abc yet")
 def test_supports_set_comparisons():
     s1 = HashTrieSet([1, 2, 3])
     s3 = HashTrieSet([1, 2])
@@ -171,3 +170,13 @@ def test_more_eq():
     assert not (HashTrieSet([o, o]) != HashTrieSet([o, o]))
     assert not (HashTrieSet([o]) != HashTrieSet([o, o]))
     assert not (HashTrieSet() != HashTrieSet([]))
+
+
+def test_more_set_comparisons():
+    s = HashTrieSet([1, 2, 3])
+
+    assert s == s
+    assert not (s < s)
+    assert s <= s
+    assert not (s > s)
+    assert s >= s
