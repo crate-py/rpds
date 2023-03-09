@@ -4,7 +4,8 @@
 
 |PyPI| |Pythons| |CI|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/rpds-py.svg :alt: PyPI version
+.. |PyPI| image:: https://img.shields.io/pypi/v/rpds-py.svg
+  :alt: PyPI version
   :target: https://pypi.org/project/rpds-py/
 
 .. |Pythons| image:: https://img.shields.io/pypi/pyversions/rpds-py.svg
