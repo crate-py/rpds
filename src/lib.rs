@@ -6,7 +6,7 @@ use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer};
-use rpds::{HashTrieMap, HashTrieSet, List};
+use rpds::{HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync};
 
 #[derive(Clone, Debug)]
 struct Key {
@@ -55,20 +55,20 @@ impl<'source> FromPyObject<'source> for Key {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping, unsendable)]
+#[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping)]
 struct HashTrieMapPy {
-    inner: HashTrieMap<Key, PyObject>,
+    inner: HashTrieMapSync<Key, PyObject>,
 }
 
-impl From<HashTrieMap<Key, PyObject>> for HashTrieMapPy {
-    fn from(map: HashTrieMap<Key, PyObject>) -> Self {
+impl From<HashTrieMapSync<Key, PyObject>> for HashTrieMapPy {
+    fn from(map: HashTrieMapSync<Key, PyObject>) -> Self {
         HashTrieMapPy { inner: map }
     }
 }
 
 impl<'source> FromPyObject<'source> for HashTrieMapPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let mut ret = HashTrieMap::new();
+        let mut ret = HashTrieMap::new_sync();
         if let Ok(mapping) = ob.downcast::<PyMapping>() {
             for each in mapping.items()?.iter()? {
                 let (k, v): (Key, PyObject) = each?.extract()?;
@@ -94,7 +94,7 @@ impl HashTrieMapPy {
             map = value;
         } else {
             map = HashTrieMapPy {
-                inner: HashTrieMap::new(),
+                inner: HashTrieMap::new_sync(),
             };
         }
         if let Some(kwds) = kwds {
@@ -239,7 +239,7 @@ impl HashTrieMapPy {
     }
 }
 
-#[pyclass(module = "rpds", unsendable)]
+#[pyclass(module = "rpds")]
 struct KeyIterator {
     inner: IntoIter<Key>,
 }
@@ -256,14 +256,14 @@ impl KeyIterator {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "HashTrieSet", module = "rpds", frozen, unsendable)]
+#[pyclass(name = "HashTrieSet", module = "rpds", frozen)]
 struct HashTrieSetPy {
-    inner: HashTrieSet<Key>,
+    inner: HashTrieSetSync<Key>,
 }
 
 impl<'source> FromPyObject<'source> for HashTrieSetPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let mut ret = HashTrieSet::new();
+        let mut ret = HashTrieSet::new_sync();
         for each in ob.iter()? {
             let k: Key = each?.extract()?;
             ret.insert_mut(k);
@@ -272,7 +272,7 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
     }
 }
 
-fn is_subset(one: &HashTrieSet<Key>, two: &HashTrieSet<Key>) -> bool {
+fn is_subset(one: &HashTrieSetSync<Key>, two: &HashTrieSetSync<Key>) -> bool {
     one.iter().all(|v| two.contains(v))
 }
 
@@ -284,7 +284,7 @@ impl HashTrieSetPy {
             value
         } else {
             HashTrieSetPy {
-                inner: HashTrieSet::new(),
+                inner: HashTrieSet::new_sync(),
             }
         }
     }
@@ -383,8 +383,8 @@ impl HashTrieSetPy {
     }
 
     fn intersection(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner: HashTrieSet<Key> = HashTrieSet::new();
-        let larger: &HashTrieSet<Key>;
+        let mut inner: HashTrieSetSync<Key> = HashTrieSet::new_sync();
+        let larger: &HashTrieSetSync<Key>;
         let iter;
         if self.inner.size() > other.inner.size() {
             larger = &self.inner;
@@ -402,7 +402,7 @@ impl HashTrieSetPy {
     }
 
     fn symmetric_difference(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner: HashTrieSet<Key>;
+        let mut inner: HashTrieSetSync<Key>;
         let iter;
         if self.inner.size() > other.inner.size() {
             inner = self.inner.clone();
@@ -422,7 +422,7 @@ impl HashTrieSetPy {
     }
 
     fn union(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner: HashTrieSet<Key>;
+        let mut inner: HashTrieSetSync<Key>;
         let iter;
         if self.inner.size() > other.inner.size() {
             inner = self.inner.clone();
@@ -451,20 +451,20 @@ impl HashTrieSetPy {
 }
 
 #[repr(transparent)]
-#[pyclass(name = "List", module = "rpds", frozen, sequence, unsendable)]
+#[pyclass(name = "List", module = "rpds", frozen, sequence)]
 struct ListPy {
-    inner: List<PyObject>,
+    inner: ListSync<PyObject>,
 }
 
-impl From<List<PyObject>> for ListPy {
-    fn from(elements: List<PyObject>) -> Self {
+impl From<ListSync<PyObject>> for ListPy {
+    fn from(elements: ListSync<PyObject>) -> Self {
         ListPy { inner: elements }
     }
 }
 
 impl<'source> FromPyObject<'source> for ListPy {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let mut ret = List::new();
+        let mut ret = List::new_sync();
         let reversed = PyModule::import(ob.py(), "builtins")?.getattr("reversed")?;
         let rob: &PyIterator = reversed.call1((ob,))?.iter()?;
         for each in rob {
@@ -483,7 +483,9 @@ impl ListPy {
         if elements.len() == 1 {
             ret = elements.get_item(0)?.extract()?;
         } else {
-            ret = ListPy { inner: List::new() };
+            ret = ListPy {
+                inner: List::new_sync(),
+            };
             if elements.len() > 1 {
                 for each in (0..elements.len()).rev() {
                     ret.inner
@@ -567,7 +569,7 @@ impl ListPy {
     }
 }
 
-#[pyclass(module = "rpds", unsendable)]
+#[pyclass(module = "rpds")]
 struct ListIterator {
     inner: IntoIter<PyObject>,
 }

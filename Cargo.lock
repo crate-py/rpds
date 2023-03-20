@@ -12,6 +12,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "archery"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6cd774058b1b415c4855d8b86436c04bf050c003156fe24bc326fb3fe75c343"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -182,13 +191,14 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66262ea963eff99163e6b741fbc3417a52cc13074728c1047e9911789df9b000"
 dependencies = [
- "archery",
+ "archery 0.4.0",
 ]
 
 [[package]]
 name = "rpds-py"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
+ "archery 0.5.0",
  "pyo3",
  "rpds",
 ]
