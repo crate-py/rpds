@@ -12,5 +12,5 @@ rpds = "0.13.0"
 archery = "0.5.0"
 
 [dependencies.pyo3]
-version = "0.18.1"
+version = "0.18.2"
 features = ["abi3-py38"]
