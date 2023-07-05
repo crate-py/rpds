@@ -169,7 +169,7 @@ impl HashTrieMapPy {
 
     #[classmethod]
     fn convert(_cls: &PyType, value: &PyAny, py: Python) -> PyResult<PyObject> {
-        if value.is_instance_of::<HashTrieMapPy>()? {
+        if value.is_instance_of::<HashTrieMapPy>() {
             Ok(value.into())
         } else {
             Ok(HashTrieMapPy::extract(value)?.into_py(py))
