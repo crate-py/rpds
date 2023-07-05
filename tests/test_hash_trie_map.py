@@ -28,8 +28,9 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 from collections.abc import Hashable, Mapping
 
-from rpds import HashTrieMap
 import pytest
+
+from rpds import HashTrieMap
 
 HASH_MSG = "Not sure HashTrieMap implements Hash, it has mutable methods"
 

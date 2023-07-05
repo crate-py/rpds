@@ -26,8 +26,9 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
-from rpds import HashTrieSet
 import pytest
+
+from rpds import HashTrieSet
 
 HASH_MSG = "Not sure HashTrieSet implements Hash, it has mutable methods"
 
