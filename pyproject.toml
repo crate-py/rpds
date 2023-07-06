@@ -15,9 +15,10 @@ authors = [
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Rust",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -28,6 +29,12 @@ classifiers = [
 
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/crate-py/rpds"
+Issues = "https://github.com/crate-py/rpds/issues/"
+Funding = "https://github.com/sponsors/Julian"
+Source = "https://github.com/crate-py/rpds"
 
 [tool.isort]
 combine_as_imports = true
