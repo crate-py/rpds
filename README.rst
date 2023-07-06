@@ -12,9 +12,9 @@
   :alt: Supported Python versions
   :target: https://pypi.org/project/rpds-py/
 
-.. |CI| image:: https://github.com/Julian/rpds.py/workflows/CI/badge.svg
+.. |CI| image:: https://github.com/crate-py/rpds/workflows/CI/badge.svg
   :alt: Build status
-  :target: https://github.com/Julian/rpds.py/actions?query=workflow%3ACI
+  :target: https://github.com/crate-py/rpds/actions?query=workflow%3ACI
 
 
 Python bindings to the Rust ``rpds`` crate.
