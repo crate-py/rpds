@@ -17,7 +17,7 @@
   :target: https://github.com/crate-py/rpds/actions?query=workflow%3ACI
 
 
-Python bindings to the Rust ``rpds`` crate.
+Python bindings to the `Rust rpds crate <https://docs.rs/rpds/>`_ for persistent data structures.
 
 What's here is quite minimal (in transparency, it was written initially to support replacing ``pyrsistent`` in the `referencing library <https://github.com/python-jsonschema/referencing>`_).
 If you see something missing (which is very likely), a PR is definitely welcome to add it.
