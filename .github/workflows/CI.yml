@@ -150,10 +150,11 @@ jobs:
 
   macos:
     needs: test
-    runs-on: macos-latest
+    runs-on: macos-${{ matrix.macOS }}
     strategy:
       matrix:
         target: [x86_64, aarch64]
+        macOS: [11, 12, 13]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
