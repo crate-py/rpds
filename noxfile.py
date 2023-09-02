@@ -37,3 +37,16 @@ def build(session):
     with TemporaryDirectory() as tmpdir:
         session.run("python", "-m", "build", ROOT, "--outdir", tmpdir)
         session.run("twine", "check", "--strict", tmpdir + "/*")
+
+
+@session(default=False)
+def requirements(session):
+    session.install("pip-tools")
+    for each in [TESTS / "requirements.in"]:
+        session.run(
+            "pip-compile",
+            "--resolver",
+            "backtracking",
+            "-U",
+            each.relative_to(ROOT),
+        )
