@@ -126,7 +126,7 @@ impl HashTrieMapPy {
     }
 
     fn __len__(&self) -> usize {
-        self.inner.size().into()
+        self.inner.size()
     }
 
     fn __repr__(&self, py: Python) -> String {
@@ -151,7 +151,7 @@ impl HashTrieMapPy {
                 && self
                     .inner
                     .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
                     .map(|(v1, v2)| PyAny::eq(v1.extract(py)?, v2))
                     .all(|r| r.unwrap_or(false)))
             .into_py(py)),
@@ -159,7 +159,7 @@ impl HashTrieMapPy {
                 || self
                     .inner
                     .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
                     .map(|(v1, v2)| PyAny::ne(v1.extract(py)?, v2))
                     .all(|r| r.unwrap_or(true)))
             .into_py(py)),
@@ -181,18 +181,15 @@ impl HashTrieMapPy {
     }
 
     fn keys(&self) -> Vec<Key> {
-        self.inner.keys().map(|key| key.clone()).collect()
+        self.inner.keys().cloned().collect()
     }
 
     fn values(&self) -> Vec<&PyObject> {
-        self.inner.values().collect::<Vec<&PyObject>>().to_owned()
+        self.inner.values().collect::<Vec<&PyObject>>()
     }
 
     fn items(&self) -> Vec<(&Key, &PyObject)> {
-        self.inner
-            .iter()
-            .collect::<Vec<(&Key, &PyObject)>>()
-            .to_owned()
+        self.inner.iter().collect::<Vec<(&Key, &PyObject)>>()
     }
 
     fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
@@ -208,7 +205,7 @@ impl HashTrieMapPy {
 
     fn insert(&self, key: Key, value: &PyAny) -> HashTrieMapPy {
         HashTrieMapPy {
-            inner: self.inner.insert(Key::from(key), value.into()),
+            inner: self.inner.insert(key, value.into()),
         }
     }
 
@@ -290,19 +287,19 @@ impl HashTrieSetPy {
     }
 
     fn __and__(&self, other: &Self) -> Self {
-        self.intersection(&other)
+        self.intersection(other)
     }
 
     fn __or__(&self, other: &Self) -> Self {
-        self.union(&other)
+        self.union(other)
     }
 
     fn __sub__(&self, other: &Self) -> Self {
-        self.difference(&other)
+        self.difference(other)
     }
 
     fn __xor__(&self, other: &Self) -> Self {
-        self.symmetric_difference(&other)
+        self.symmetric_difference(other)
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
@@ -316,7 +313,7 @@ impl HashTrieSetPy {
     }
 
     fn __len__(&self) -> usize {
-        self.inner.size().into()
+        self.inner.size()
     }
 
     fn __repr__(&self, py: Python) -> String {
@@ -350,7 +347,7 @@ impl HashTrieSetPy {
 
     fn insert(&self, value: Key) -> HashTrieSetPy {
         HashTrieSetPy {
-            inner: self.inner.insert(Key::from(value)),
+            inner: self.inner.insert(value),
         }
     }
 
