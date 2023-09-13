@@ -4,13 +4,11 @@
 #
 #    pip-compile tests/requirements.in
 #
-hypothesis==6.83.0
-    # via -r tests/requirements.in
 iniconfig==2.0.0
     # via pytest
 packaging==23.1
     # via pytest
 pluggy==1.3.0
     # via pytest
-pytest==7.4.0
+pytest==7.4.2
     # via -r tests/requirements.in
