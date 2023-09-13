@@ -4,8 +4,6 @@
 #
 #    pip-compile tests/requirements.in
 #
-attrs==23.1.0
-    # via hypothesis
 hypothesis==6.83.0
     # via -r tests/requirements.in
 iniconfig==2.0.0
@@ -16,5 +14,3 @@ pluggy==1.3.0
     # via pytest
 pytest==7.4.0
     # via -r tests/requirements.in
-sortedcontainers==2.4.0
-    # via hypothesis
