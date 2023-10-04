@@ -143,13 +143,17 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: [x64, x86]
+        include:
+          - target: x86_64
+            python-architecture: x64
+          - target: i686
+            python-architecture: x86
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "3.x"
-          architecture: ${{ matrix.target }}
+          architecture: ${{ matrix.python-architecture }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
