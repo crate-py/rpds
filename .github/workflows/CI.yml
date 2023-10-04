@@ -73,6 +73,22 @@ jobs:
       - name: Run nox
         run: nox -s "${{ matrix.noxenv }}"
 
+  sdist:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build an sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --release --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
   manylinux:
     needs: test
     runs-on: ubuntu-latest
@@ -88,7 +104,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --sdist --interpreter '3.8 3.9 3.10 3.11 3.12 pypy3.8 pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12 pypy3.8 pypy3.9 pypy3.10'
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v3
