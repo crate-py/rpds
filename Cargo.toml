@@ -12,5 +12,5 @@ rpds = "1.0.1"
 archery = "1.0.0"
 
 [dependencies.pyo3]
-version = "0.19.2"
+version = "0.20.0"
 features = ["extension-module"]
