@@ -553,17 +553,25 @@ impl ListPy {
             .ok_or_else(|| PyIndexError::new_err("empty list has no first element"))
     }
 
+    #[getter]
+    fn rest(&self) -> ListPy {
+        let mut inner = self.inner.clone();
+        inner.drop_first_mut();
+        ListPy { inner }
+    }
+
     fn push_front(&self, other: PyObject) -> ListPy {
         ListPy {
             inner: self.inner.push_front(other),
         }
     }
 
-    #[getter]
-    fn rest(&self) -> ListPy {
-        let mut inner = self.inner.clone();
-        inner.drop_first_mut();
-        ListPy { inner }
+    fn drop_first(&self) -> PyResult<ListPy> {
+        if let Some(inner) = self.inner.drop_first() {
+            Ok(ListPy { inner })
+        } else {
+            Err(PyIndexError::new_err("empty list has no first element"))
+        }
     }
 }
 

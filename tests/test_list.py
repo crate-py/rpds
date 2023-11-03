@@ -108,8 +108,22 @@ def test_sequence():
     assert m == List(["a", "s", "d", "f"])
 
 
+# Non-pyrsistent-test-suite tests
+
+
+def test_drop_first():
+    assert List([1, 2, 3]).drop_first() == List([2, 3])
+
+
+def test_drop_first_empty():
+    """
+    rpds itself returns an Option<List> here but we try IndexError instead.
+    """
+    with pytest.raises(IndexError):
+        List([]).drop_first()
+
+
 def test_more_eq():
-    # Non-pyrsistent-test-suite test
     o = object()
 
     assert List([o, o]) == List([o, o])
