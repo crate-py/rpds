@@ -39,7 +39,7 @@ impl IntoPy<PyObject> for Key {
     }
 }
 
-impl AsPyPointer for Key {
+unsafe impl AsPyPointer for Key {
     fn as_ptr(&self) -> *mut pyo3::ffi::PyObject {
         self.inner.as_ptr()
     }
@@ -133,7 +133,7 @@ impl HashTrieMapPy {
         let contents = self.inner.into_iter().map(|(k, v)| {
             format!(
                 "{}: {}",
-                k.into_py(py),
+                k.clone().into_py(py),
                 v.call_method0(py, "__repr__")
                     .and_then(|r| r.extract(py))
                     .unwrap_or("<repr error>".to_owned())
@@ -188,8 +188,8 @@ impl HashTrieMapPy {
         self.inner.values().collect::<Vec<&PyObject>>()
     }
 
-    fn items(&self) -> Vec<(&Key, &PyObject)> {
-        self.inner.iter().collect::<Vec<(&Key, &PyObject)>>()
+    fn items(&self) -> Vec<(Key, &PyObject)> {
+        self.inner.iter().map(|(k, v)| (k.clone(), v)).collect()
     }
 
     fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
@@ -318,7 +318,8 @@ impl HashTrieSetPy {
 
     fn __repr__(&self, py: Python) -> String {
         let contents = self.inner.into_iter().map(|k| {
-            k.into_py(py)
+            k.clone()
+                .into_py(py)
                 .call_method0(py, "__repr__")
                 .and_then(|r| r.extract(py))
                 .unwrap_or("<repr failed>".to_owned())
