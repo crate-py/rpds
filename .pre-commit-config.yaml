@@ -1,8 +1,8 @@
 ci:
   skip:
     # pre-commit.ci doesn't have Rust installed
-    - cargo-fmt
-    - cargo-deny
+    - fmt
+    - clippy
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
