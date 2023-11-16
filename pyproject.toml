@@ -36,6 +36,9 @@ Issues = "https://github.com/crate-py/rpds/issues/"
 Funding = "https://github.com/sponsors/Julian"
 Source = "https://github.com/crate-py/rpds"
 
+[tool.black]
+line-length = 79
+
 [tool.isort]
 combine_as_imports = true
 from_first = true
