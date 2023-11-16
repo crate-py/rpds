@@ -26,6 +26,8 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
+import pickle
+
 import pytest
 
 from rpds import List
@@ -139,3 +141,7 @@ def test_more_eq():
     assert not (List([o, o]) != List([o, o]))
     assert not (List([o]) != List([o]))
     assert not (List() != List([]))
+
+
+def test_pickle():
+    assert pickle.loads(pickle.dumps(List([1, 2, 3, 4]))) == List([1, 2, 3, 4])

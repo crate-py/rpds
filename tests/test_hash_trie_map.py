@@ -27,6 +27,7 @@ Pre-modification, these were MIT licensed, and are copyright:
     OTHER DEALINGS IN THE SOFTWARE.
 """
 from collections.abc import Hashable, Mapping
+import pickle
 
 import pytest
 
@@ -322,3 +323,9 @@ def test_more_eq():
     assert HashTrieMap({1: 2}) != HashTrieMap({1: 3})
     assert HashTrieMap({o: 1}) != HashTrieMap({o: o})
     assert HashTrieMap([]) != HashTrieMap([(o, 1)])
+
+
+def test_pickle():
+    assert pickle.loads(
+        pickle.dumps(HashTrieMap([(1, 2), (3, 4)]))
+    ) == HashTrieMap([(1, 2), (3, 4)])
