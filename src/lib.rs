@@ -5,7 +5,7 @@ use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
-use pyo3::{prelude::*, AsPyPointer};
+use pyo3::{prelude::*, AsPyPointer, PyTypeInfo};
 use rpds::{HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync};
 
 #[derive(Clone, Debug)]
@@ -165,6 +165,16 @@ impl HashTrieMapPy {
             .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
+    }
+
+    fn __reduce__(slf: PyRef<Self>) -> (&PyType, (Vec<(Key, PyObject)>,)) {
+        (
+            HashTrieMapPy::type_object(slf.py()),
+            (slf.inner
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),),
+        )
     }
 
     #[classmethod]
@@ -344,6 +354,13 @@ impl HashTrieSetPy {
             CompareOp::Le => Ok(is_subset(&self.inner, &other.inner).into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
+    }
+
+    fn __reduce__(slf: PyRef<Self>) -> (&PyType, (Vec<Key>,)) {
+        (
+            HashTrieSetPy::type_object(slf.py()),
+            (slf.inner.iter().cloned().collect(),),
+        )
     }
 
     fn insert(&self, value: Key) -> HashTrieSetPy {
@@ -544,6 +561,13 @@ impl ListPy {
         ListPy {
             inner: self.inner.reverse(),
         }
+    }
+
+    fn __reduce__(slf: PyRef<Self>) -> (&PyType, (Vec<PyObject>,)) {
+        (
+            ListPy::type_object(slf.py()),
+            (slf.inner.iter().cloned().collect(),),
+        )
     }
 
     #[getter]

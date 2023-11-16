@@ -26,6 +26,8 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
+import pickle
+
 import pytest
 
 from rpds import HashTrieSet
@@ -181,3 +183,9 @@ def test_more_set_comparisons():
     assert s <= s
     assert not (s > s)
     assert s >= s
+
+
+def test_pickle():
+    assert pickle.loads(pickle.dumps(HashTrieSet([1, 2, 3, 4]))) == HashTrieSet(
+        [1, 2, 3, 4]
+    )
