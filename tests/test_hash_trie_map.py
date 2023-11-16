@@ -326,6 +326,6 @@ def test_more_eq():
 
 
 def test_pickle():
-    assert pickle.loads(pickle.dumps(HashTrieMap([(1, 2), (3, 4)]))) == HashTrieMap(
-        [(1, 2), (3, 4)]
-    )
+    assert pickle.loads(
+        pickle.dumps(HashTrieMap([(1, 2), (3, 4)]))
+    ) == HashTrieMap([(1, 2), (3, 4)])

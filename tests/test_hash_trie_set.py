@@ -186,6 +186,6 @@ def test_more_set_comparisons():
 
 
 def test_pickle():
-    assert pickle.loads(pickle.dumps(HashTrieSet([1, 2, 3, 4]))) == HashTrieSet(
-        [1, 2, 3, 4]
-    )
+    assert pickle.loads(
+        pickle.dumps(HashTrieSet([1, 2, 3, 4]))
+    ) == HashTrieSet([1, 2, 3, 4])
