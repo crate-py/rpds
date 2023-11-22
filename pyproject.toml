@@ -34,6 +34,7 @@ dynamic = ["version"]
 Homepage = "https://github.com/crate-py/rpds"
 Issues = "https://github.com/crate-py/rpds/issues/"
 Funding = "https://github.com/sponsors/Julian"
+Tidelift = "https://tidelift.com/subscription/pkg/pypi-rpds-py?utm_source=pypi-rpds-py&utm_medium=referral&utm_campaign=pypi-link"
 Source = "https://github.com/crate-py/rpds"
 
 [tool.black]
