@@ -133,7 +133,10 @@ impl HashTrieMapPy {
         let contents = self.inner.into_iter().map(|(k, v)| {
             format!(
                 "{}: {}",
-                k.clone().into_py(py),
+                k.inner
+                    .call_method0(py, "__repr__")
+                    .and_then(|r| r.extract(py))
+                    .unwrap_or("<repr error>".to_owned()),
                 v.call_method0(py, "__repr__")
                     .and_then(|r| r.extract(py))
                     .unwrap_or("<repr error>".to_owned())

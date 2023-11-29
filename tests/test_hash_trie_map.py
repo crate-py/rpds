@@ -287,6 +287,14 @@ def test_iteration_with_many_elements():
     assert actual_values == set(values + [12345, 54321])
 
 
+def test_repr():
+    rep = repr(HashTrieMap({"foo": "12", "": 37}))
+    assert rep in {
+        "HashTrieMap({'foo': '12', '': 37})",
+        "HashTrieMap({'': 37, 'foo': '12'})",
+    }
+
+
 def test_str():
     s = str(HashTrieMap({1: 2, 3: 4}))
     assert s == "HashTrieMap({1: 2, 3: 4})" or s == "HashTrieMap({3: 4, 1: 2})"
