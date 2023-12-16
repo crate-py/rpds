@@ -6,7 +6,9 @@ use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer, PyTypeInfo};
-use rpds::{HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync};
+use rpds::{
+    HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync, Queue, QueueSync,
+};
 
 #[derive(Clone, Debug)]
 struct Key {
@@ -618,6 +620,123 @@ impl ListIterator {
     }
 }
 
+#[repr(transparent)]
+#[pyclass(name = "Queue", module = "rpds", frozen, sequence)]
+struct QueuePy {
+    inner: QueueSync<PyObject>,
+}
+
+impl From<QueueSync<PyObject>> for QueuePy {
+    fn from(elements: QueueSync<PyObject>) -> Self {
+        QueuePy { inner: elements }
+    }
+}
+
+impl<'source> FromPyObject<'source> for QueuePy {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        let mut ret = Queue::new_sync();
+        for each in ob.iter()? {
+            ret.enqueue_mut(each?.extract()?);
+        }
+        Ok(QueuePy { inner: ret })
+    }
+}
+
+#[pymethods]
+impl QueuePy {
+    #[new]
+    #[pyo3(signature = (*elements))]
+    fn init(elements: &PyTuple, py: Python<'_>) -> PyResult<Self> {
+        let mut ret: QueuePy;
+        if elements.len() == 1 {
+            ret = elements.get_item(0)?.extract()?;
+        } else {
+            ret = QueuePy {
+                inner: Queue::new_sync(),
+            };
+            if elements.len() > 1 {
+                for each in elements {
+                    ret.inner.enqueue_mut(each.into_py(py));
+                }
+            }
+        }
+        Ok(ret)
+    }
+
+    fn __eq__(&self, other: &Self, py: Python<'_>) -> bool {
+        (self.inner.len() == other.inner.len())
+            && self
+                .inner
+                .iter()
+                .zip(other.inner.iter())
+                .map(|(e1, e2)| PyAny::eq(e1.extract(py)?, e2))
+                .all(|r| r.unwrap_or(false))
+    }
+
+    fn __ne__(&self, other: &Self, py: Python<'_>) -> bool {
+        (self.inner.len() != other.inner.len())
+            || self
+                .inner
+                .iter()
+                .zip(other.inner.iter())
+                .map(|(e1, e2)| PyAny::ne(e1.extract(py)?, e2))
+                .any(|r| r.unwrap_or(true))
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<ListIterator>> {
+        let iter = slf
+            .inner
+            .iter()
+            .map(|k| k.to_owned())
+            .collect::<Vec<_>>()
+            .into_iter();
+        Py::new(slf.py(), ListIterator { inner: iter })
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.len()
+    }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|k| {
+            k.clone()
+                .into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("Queue([{}])", contents.collect::<Vec<_>>().join(", "))
+    }
+
+    #[getter]
+    fn peek(&self) -> PyResult<PyObject> {
+        if let Some(peeked) = self.inner.peek() {
+            Ok(peeked.to_owned())
+        } else {
+            Err(PyIndexError::new_err("peeked an empty queue"))
+        }
+    }
+
+    #[getter]
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    fn enqueue(&self, value: &PyAny) -> Self {
+        QueuePy {
+            inner: self.inner.enqueue(value.into()),
+        }
+    }
+
+    fn dequeue(&self) -> PyResult<QueuePy> {
+        if let Some(inner) = self.inner.dequeue() {
+            Ok(QueuePy { inner })
+        } else {
+            Err(PyIndexError::new_err("dequeued an empty queue"))
+        }
+    }
+}
+
 #[pymodule]
 #[pyo3(name = "rpds")]
 fn rpds_py(py: Python, m: &PyModule) -> PyResult<()> {
@@ -625,5 +744,6 @@ fn rpds_py(py: Python, m: &PyModule) -> PyResult<()> {
     PyMapping::register::<HashTrieMapPy>(py)?;
     m.add_class::<HashTrieSetPy>()?;
     m.add_class::<ListPy>()?;
+    m.add_class::<QueuePy>()?;
     Ok(())
 }
