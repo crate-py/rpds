@@ -169,7 +169,7 @@ def test_same_hash_when_content_the_same_but_underlying_vector_size_differs():
             x = x.remove(z)
 
     assert x == y
-    # assert hash(x) == hash(y)
+    # assert hash(x) == hash(y)  # noqa: ERA001
 
 
 class HashabilityControlled:
@@ -263,7 +263,7 @@ class HashDummy:
 
 
 def test_iteration_with_many_elements():
-    values = list(range(0, 2000))
+    values = list(range(2000))
     keys = [str(x) for x in values]
     init_dict = dict(zip(keys, values))
 
@@ -283,8 +283,8 @@ def test_iteration_with_many_elements():
         actual_values.add(v)
         actual_keys.add(k)
 
-    assert actual_keys == set(keys + [hash_dummy1, hash_dummy2])
-    assert actual_values == set(values + [12345, 54321])
+    assert actual_keys == {*keys, hash_dummy1, hash_dummy2}
+    assert actual_values == {*values, 12345, 54321}
 
 
 def test_repr():
@@ -337,7 +337,7 @@ def test_more_eq():
 
 def test_pickle():
     assert pickle.loads(
-        pickle.dumps(HashTrieMap([(1, 2), (3, 4)]))
+        pickle.dumps(HashTrieMap([(1, 2), (3, 4)])),
     ) == HashTrieMap([(1, 2), (3, 4)])
 
 

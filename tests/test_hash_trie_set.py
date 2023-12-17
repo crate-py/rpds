@@ -142,7 +142,7 @@ def test_repr():
 
 def test_update():
     assert HashTrieSet([1, 2, 3]).update([3, 4, 4, 5]) == HashTrieSet(
-        [1, 2, 3, 4, 5]
+        [1, 2, 3, 4, 5],
     )
 
 
@@ -187,5 +187,5 @@ def test_more_set_comparisons():
 
 def test_pickle():
     assert pickle.loads(
-        pickle.dumps(HashTrieSet([1, 2, 3, 4]))
+        pickle.dumps(HashTrieSet([1, 2, 3, 4])),
     ) == HashTrieSet([1, 2, 3, 4])
