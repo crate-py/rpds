@@ -12,3 +12,5 @@ pluggy==1.3.0
     # via pytest
 pytest==7.4.3
     # via -r tests/requirements.in
+file:.#egg=rpds-py
+    # via -r tests/requirements.in
