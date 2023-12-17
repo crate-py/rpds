@@ -191,8 +191,12 @@ impl HashTrieMapPy {
         }
     }
 
-    fn get(&self, key: Key) -> Option<&PyObject> {
-        self.inner.get(&key)
+    fn get(&self, key: Key, default: Option<PyObject>) -> Option<PyObject> {
+        if let Some(value) = self.inner.get(&key) {
+            Some(value.to_owned())
+        } else {
+            default
+        }
     }
 
     fn keys(&self) -> Vec<Key> {

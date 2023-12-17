@@ -66,7 +66,7 @@ def test_initialization_with_one_element():
     assert "a" not in empty_map
 
 
-def test_get_non_existing_raises_key_error():
+def test_index_non_existing_raises_key_error():
     m1 = HashTrieMap()
     with pytest.raises(KeyError) as error:
         m1["foo"]
@@ -320,8 +320,10 @@ def test_fast_convert_hashtriemap():
     assert HashTrieMap.convert(m) is m
 
 
+# Non-pyrsistent-test-suite tests
+
+
 def test_more_eq():
-    # Non-pyrsistent-test-suite test
     o = object()
 
     assert HashTrieMap([(o, o), (1, o)]) == HashTrieMap([(o, o), (1, o)])
@@ -337,3 +339,10 @@ def test_pickle():
     assert pickle.loads(
         pickle.dumps(HashTrieMap([(1, 2), (3, 4)]))
     ) == HashTrieMap([(1, 2), (3, 4)])
+
+
+def test_get():
+    m1 = HashTrieMap({"foo": "bar"})
+    assert m1.get("foo") == "bar"
+    assert m1.get("baz") is None
+    assert m1.get("spam", "eggs") == "eggs"
