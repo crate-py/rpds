@@ -1,26 +1,3 @@
-===========
-``rpds.py``
-===========
-
-|PyPI| |Pythons| |CI|
-
-.. |PyPI| image:: https://img.shields.io/pypi/v/rpds-py.svg
-  :alt: PyPI version
-  :target: https://pypi.org/project/rpds-py/
-
-.. |Pythons| image:: https://img.shields.io/pypi/pyversions/rpds-py.svg
-  :alt: Supported Python versions
-  :target: https://pypi.org/project/rpds-py/
-
-.. |CI| image:: https://github.com/crate-py/rpds/workflows/CI/badge.svg
-  :alt: Build status
-  :target: https://github.com/crate-py/rpds/actions?query=workflow%3ACI
-
-.. |ReadTheDocs| image:: https://readthedocs.org/projects/referencing/badge/?version=stable&style=flat
-   :alt: ReadTheDocs status
-   :target: https://referencing.readthedocs.io/en/stable/
-
-
 Python bindings to the `Rust rpds crate <https://docs.rs/rpds/>`_ for persistent data structures.
 
 What's here is quite minimal (in transparency, it was written initially to support replacing ``pyrsistent`` in the `referencing library <https://github.com/python-jsonschema/referencing>`_).
@@ -66,3 +43,10 @@ Methods in general are named similarly to their ``rpds`` counterparts (rather th
     True
     >>> L.rest == List([3, 5])
     True
+
+
+.. toctree::
+    :glob:
+    :hidden:
+
+    api
