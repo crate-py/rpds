@@ -191,6 +191,23 @@ impl HashTrieMapPy {
         }
     }
 
+    #[classmethod]
+    fn fromkeys(
+        _cls: &PyType,
+        keys: &PyAny,
+        val: Option<&PyAny>,
+        py: Python,
+    ) -> PyResult<HashTrieMapPy> {
+        let mut inner = HashTrieMap::new_sync();
+        let none = py.None();
+        let value = val.unwrap_or_else(|| none.as_ref(py));
+        for each in keys.iter()? {
+            let key = Key::extract(each?)?.to_owned();
+            inner.insert_mut(key, value.into());
+        }
+        Ok(HashTrieMapPy { inner })
+    }
+
     fn get(&self, key: Key, default: Option<PyObject>) -> Option<PyObject> {
         if let Some(value) = self.inner.get(&key) {
             Some(value.to_owned())

@@ -346,3 +346,27 @@ def test_get():
     assert m1.get("foo") == "bar"
     assert m1.get("baz") is None
     assert m1.get("spam", "eggs") == "eggs"
+
+
+def test_fromkeys():
+    keys = list(range(10))
+    got = HashTrieMap.fromkeys(keys)
+    expected = HashTrieMap((i, None) for i in keys)
+    assert got == HashTrieMap(dict.fromkeys(keys)) == expected
+
+
+def test_fromkeys_explicit_value():
+    keys = list(range(10))
+    expected = HashTrieMap((i, "foo") for i in keys)
+    got = HashTrieMap.fromkeys(keys, "foo")
+    expected = HashTrieMap((i, "foo") for i in keys)
+    assert got == HashTrieMap(dict.fromkeys(keys, "foo")) == expected
+
+
+def test_fromkeys_explicit_value_not_copied():
+    keys = list(range(5))
+
+    got = HashTrieMap.fromkeys(keys, [])
+    got[3].append(1)
+
+    assert got == HashTrieMap((i, [1]) for i in keys)
