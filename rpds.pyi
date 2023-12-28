@@ -37,6 +37,12 @@ class HashTrieMap(Mapping[_KT_co, _VT_co]):
         cls,
         value: Mapping[_KT_co, _VT_co] | Iterable[tuple[_KT_co, _VT_co]],
     ) -> HashTrieMap[_KT_co, _VT_co]: ...
+    @classmethod
+    def fromkeys(
+        cls,
+        keys: Iterable[_KT_co],
+        value: _VT_co = None,
+    ) -> HashTrieMap[_KT_co, _VT_co]: ...
 
 class HashTrieSet(frozenset[_T]):
     def __init__(self, value: Iterable[_T] = ()): ...
