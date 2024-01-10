@@ -573,13 +573,10 @@ impl ListPy {
         }
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<ListIterator>> {
-        Py::new(
-            slf.py(),
-            ListIterator {
-                inner: slf.inner.clone(),
-            },
-        )
+    fn __iter__(slf: PyRef<'_, Self>) -> ListIterator {
+        ListIterator {
+            inner: slf.inner.clone(),
+        }
     }
 
     fn __reversed__(&self) -> ListPy {
@@ -723,13 +720,10 @@ impl QueuePy {
                 .any(|r| r.unwrap_or(true))
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<QueueIterator>> {
-        Py::new(
-            slf.py(),
-            QueueIterator {
-                inner: slf.inner.clone(),
-            },
-        )
+    fn __iter__(slf: PyRef<'_, Self>) -> QueueIterator {
+        QueueIterator {
+            inner: slf.inner.clone(),
+        }
     }
 
     fn __len__(&self) -> usize {
