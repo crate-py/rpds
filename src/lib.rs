@@ -338,14 +338,10 @@ impl HashTrieSetPy {
         self.symmetric_difference(other)
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
-        let iter = slf
-            .inner
-            .iter()
-            .map(|k| k.to_owned())
-            .collect::<Vec<_>>()
-            .into_iter();
-        Py::new(slf.py(), KeyIterator { inner: iter })
+    fn __iter__(slf: PyRef<'_, Self>) -> SetIterator {
+        SetIterator {
+            inner: slf.inner.clone(),
+        }
     }
 
     fn __len__(&self) -> usize {
@@ -488,6 +484,24 @@ impl HashTrieSetPy {
             }
         }
         Ok(HashTrieSetPy { inner })
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct SetIterator {
+    inner: HashTrieSetSync<Key>,
+}
+
+#[pymethods]
+impl SetIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
+        let first = slf.inner.iter().next()?.to_owned();
+        slf.inner = slf.inner.remove(&first);
+        Some(first)
     }
 }
 
