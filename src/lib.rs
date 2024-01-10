@@ -574,13 +574,12 @@ impl ListPy {
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<ListIterator>> {
-        let iter = slf
-            .inner
-            .iter()
-            .map(|k| k.to_owned())
-            .collect::<Vec<_>>()
-            .into_iter();
-        Py::new(slf.py(), ListIterator { inner: iter })
+        Py::new(
+            slf.py(),
+            ListIterator {
+                inner: slf.inner.clone(),
+            },
+        )
     }
 
     fn __reversed__(&self) -> ListPy {
@@ -627,7 +626,7 @@ impl ListPy {
 
 #[pyclass(module = "rpds")]
 struct ListIterator {
-    inner: IntoIter<PyObject>,
+    inner: ListSync<PyObject>,
 }
 
 #[pymethods]
@@ -637,7 +636,27 @@ impl ListIterator {
     }
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-        slf.inner.next()
+        let first = slf.inner.first()?.to_owned();
+        slf.inner = slf.inner.drop_first()?;
+        Some(first)
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct QueueIterator {
+    inner: QueueSync<PyObject>,
+}
+
+#[pymethods]
+impl QueueIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        let first = slf.inner.peek()?.to_owned();
+        slf.inner = slf.inner.dequeue()?;
+        Some(first)
     }
 }
 
@@ -704,14 +723,13 @@ impl QueuePy {
                 .any(|r| r.unwrap_or(true))
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<ListIterator>> {
-        let iter = slf
-            .inner
-            .iter()
-            .map(|k| k.to_owned())
-            .collect::<Vec<_>>()
-            .into_iter();
-        Py::new(slf.py(), ListIterator { inner: iter })
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<QueueIterator>> {
+        Py::new(
+            slf.py(),
+            QueueIterator {
+                inner: slf.inner.clone(),
+            },
+        )
     }
 
     fn __len__(&self) -> usize {
