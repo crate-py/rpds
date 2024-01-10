@@ -1,5 +1,4 @@
 use std::hash::{Hash, Hasher};
-use std::vec::IntoIter;
 
 use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
@@ -111,13 +110,10 @@ impl HashTrieMapPy {
         self.inner.contains_key(&key)
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
-        Py::new(
-            slf.py(),
-            KeyIterator {
-                inner: slf.keys().into_iter(),
-            },
-        )
+    fn __iter__(slf: PyRef<'_, Self>) -> KeyIterator {
+        KeyIterator {
+            inner: slf.inner.clone(),
+        }
     }
 
     fn __getitem__(&self, key: Key) -> PyResult<PyObject> {
@@ -274,7 +270,7 @@ impl HashTrieMapPy {
 
 #[pyclass(module = "rpds")]
 struct KeyIterator {
-    inner: IntoIter<Key>,
+    inner: HashTrieMapSync<Key, PyObject>,
 }
 
 #[pymethods]
@@ -284,7 +280,9 @@ impl KeyIterator {
     }
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        slf.inner.next()
+        let first = slf.inner.keys().next()?.to_owned();
+        slf.inner = slf.inner.remove(&first);
+        Some(first)
     }
 }
 
