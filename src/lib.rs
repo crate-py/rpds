@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
+use pyo3::types::{PyDict, PyIterator, PyNone, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer, PyTypeInfo};
 use rpds::{
@@ -347,6 +347,29 @@ impl KeysView {
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
     }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(k, _)| {
+            k.clone()
+                .inner
+                .into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("keys_view({{{}}})", contents.collect::<Vec<_>>().join(", "))
+    }
+
+    fn union(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<KeysView> {
+        // There doesn't seem to be a low-effort way to get a HashTrieSet out of a map,
+        // so we just keep our map and add values we'll ignore.
+        let mut inner = slf.inner.clone();
+        let none = PyNone::get(py);
+        for each in other.iter()? {
+            inner.insert_mut(Key::extract(each?)?, none.into());
+        }
+        Ok(KeysView { inner })
+    }
 }
 
 #[pyclass(module = "rpds")]
@@ -365,6 +388,16 @@ impl ValuesView {
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
     }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(_, v)| {
+            v.into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("values_view([{}])", contents.collect::<Vec<_>>().join(", "))
+    }
 }
 
 #[pyclass(module = "rpds")]
@@ -382,6 +415,14 @@ impl ItemsView {
 
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
+    }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(k, v)| {
+            let tuple = PyTuple::new(py, (k.inner, v.to_owned()));
+            format!("{:?}", tuple)
+        });
+        format!("items_view([{}])", contents.collect::<Vec<_>>().join(", "))
     }
 }
 

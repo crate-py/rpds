@@ -348,6 +348,49 @@ def test_get():
     assert m1.get("spam", "eggs") == "eggs"
 
 
+def test_keys():
+    assert {1: 2, 3: 4}.keys() & HashTrieMap({1: 2}).keys() == {1}
+    assert HashTrieMap({1: 2}).keys() & {1: 2, 3: 4}.keys() == {1}
+    assert not HashTrieMap({1: 2}).keys() & {}.keys()
+    assert HashTrieMap({1: 2}).keys().union({3}) == {1, 3}
+
+
+def test_keys_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar"})
+    assert repr(m.keys()) in {
+        "keys_view({'foo', 37})",
+        "keys_view({37, 'foo'})",
+    }
+
+
+def test_values():
+    assert {1: 2, 3: 4}.values() & HashTrieMap({1: 2}).values() == {1}
+    assert HashTrieMap({1: 2}).values() & {1: 2, 3: 4}.values() == {1}
+    assert not HashTrieMap({1: 2}).values() & {}.values()
+    assert HashTrieMap({1: 2}).values().union({3}) == {1, 3}
+
+
+def test_values_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar", "baz": 3})
+    assert repr(m.values()) in {
+        "values_view(['bar', 3, 3])",
+        "values_view([3, 'bar', 3])",
+        "values_view([3, 3, 'bar'])",
+    }
+
+
+def test_items_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar", "baz": 3})
+    assert repr(m.items()) in {
+        "items_view([('foo', 3), (37, 'bar'), ('baz', 3)])",
+        "items_view([('foo', 3), ('baz', 3), (37, 'bar')])",
+        "items_view([(37, 'bar'), ('foo', 3), ('baz', 3)])",
+        "items_view([(37, 'bar'), ('baz', 3), ('foo', 3)])",
+        "items_view([('baz', 3), (37, 'bar'), ('foo', 3)])",
+        "items_view([('baz', 3), ('foo', 3), (37, 'bar')])",
+    }
+
+
 def test_fromkeys():
     keys = list(range(10))
     got = HashTrieMap.fromkeys(keys)
