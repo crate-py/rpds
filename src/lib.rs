@@ -110,8 +110,8 @@ impl HashTrieMapPy {
         self.inner.contains_key(&key)
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> KeyIterator {
-        KeyIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
+        KeysIterator {
             inner: slf.inner.clone(),
         }
     }
@@ -212,16 +212,22 @@ impl HashTrieMapPy {
         }
     }
 
-    fn keys(&self) -> Vec<Key> {
-        self.inner.keys().cloned().collect()
+    fn keys(&self) -> KeysView {
+        KeysView {
+            inner: self.inner.clone(),
+        }
     }
 
-    fn values(&self) -> Vec<&PyObject> {
-        self.inner.values().collect::<Vec<&PyObject>>()
+    fn values(&self) -> ValuesView {
+        ValuesView {
+            inner: self.inner.clone(),
+        }
     }
 
-    fn items(&self) -> Vec<(Key, &PyObject)> {
-        self.inner.iter().map(|(k, v)| (k.clone(), v)).collect()
+    fn items(&self) -> ItemsView {
+        ItemsView {
+            inner: self.inner.clone(),
+        }
     }
 
     fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
@@ -269,12 +275,12 @@ impl HashTrieMapPy {
 }
 
 #[pyclass(module = "rpds")]
-struct KeyIterator {
+struct KeysIterator {
     inner: HashTrieMapSync<Key, PyObject>,
 }
 
 #[pymethods]
-impl KeyIterator {
+impl KeysIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -283,6 +289,99 @@ impl KeyIterator {
         let first = slf.inner.keys().next()?.to_owned();
         slf.inner = slf.inner.remove(&first);
         Some(first)
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct ValuesIterator {
+    inner: HashTrieMapSync<Key, PyObject>,
+}
+
+#[pymethods]
+impl ValuesIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        let kv = slf.inner.iter().next()?;
+        let value = kv.1.to_owned();
+        slf.inner = slf.inner.remove(kv.0);
+        Some(value)
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct ItemsIterator {
+    inner: HashTrieMapSync<Key, PyObject>,
+}
+
+#[pymethods]
+impl ItemsIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, PyObject)> {
+        let kv = slf.inner.iter().next()?;
+        let key = kv.0.to_owned();
+        let value = kv.1.to_owned();
+        slf.inner = slf.inner.remove(kv.0);
+        Some((key, value))
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct KeysView {
+    inner: HashTrieMapSync<Key, PyObject>,
+}
+
+#[pymethods]
+impl KeysView {
+    fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
+        KeysIterator {
+            inner: slf.inner.clone(),
+        }
+    }
+
+    fn __len__(slf: PyRef<'_, Self>) -> usize {
+        slf.inner.size()
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct ValuesView {
+    inner: HashTrieMapSync<Key, PyObject>,
+}
+
+#[pymethods]
+impl ValuesView {
+    fn __iter__(slf: PyRef<'_, Self>) -> ValuesIterator {
+        ValuesIterator {
+            inner: slf.inner.clone(),
+        }
+    }
+
+    fn __len__(slf: PyRef<'_, Self>) -> usize {
+        slf.inner.size()
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct ItemsView {
+    inner: HashTrieMapSync<Key, PyObject>,
+}
+
+#[pymethods]
+impl ItemsView {
+    fn __iter__(slf: PyRef<'_, Self>) -> ItemsIterator {
+        ItemsIterator {
+            inner: slf.inner.clone(),
+        }
+    }
+
+    fn __len__(slf: PyRef<'_, Self>) -> usize {
+        slf.inner.size()
     }
 }
 
