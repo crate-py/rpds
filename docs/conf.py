@@ -27,7 +27,6 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
-    "sphinx_json_schema_spec",
     "sphinxcontrib.spelling",
     "sphinxext.opengraph",
 ]
