@@ -26,6 +26,7 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
+from collections import abc
 import pickle
 
 import pytest
@@ -174,6 +175,10 @@ def test_more_eq():
     assert not (HashTrieSet([o]) != HashTrieSet([o, o]))
     assert not (HashTrieSet() != HashTrieSet([]))
 
+    assert HashTrieSet([1, 2]) == {1, 2}
+    assert HashTrieSet([1, 2]) != {1, 2, 3}
+    assert HashTrieSet([1, 2]) != [1, 2]
+
 
 def test_more_set_comparisons():
     s = HashTrieSet([1, 2, 3])
@@ -189,3 +194,14 @@ def test_pickle():
     assert pickle.loads(
         pickle.dumps(HashTrieSet([1, 2, 3, 4])),
     ) == HashTrieSet([1, 2, 3, 4])
+
+
+def test_instance_of_set():
+    assert isinstance(HashTrieSet(), abc.Set)
+
+
+def test_lt_le_gt_ge():
+    assert HashTrieSet({}) < {1}
+    assert HashTrieSet({}) <= {1}
+    assert HashTrieSet({1}) > set()
+    assert HashTrieSet({1}) >= set()

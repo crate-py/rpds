@@ -26,7 +26,8 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
-from collections.abc import Hashable, Mapping
+from collections import abc
+from operator import methodcaller
 import pickle
 
 import pytest
@@ -38,11 +39,11 @@ HASH_MSG = "Not sure HashTrieMap implements Hash, it has mutable methods"
 
 @pytest.mark.xfail(reason=HASH_MSG)
 def test_instance_of_hashable():
-    assert isinstance(HashTrieMap(), Hashable)
+    assert isinstance(HashTrieMap(), abc.Hashable)
 
 
 def test_instance_of_map():
-    assert isinstance(HashTrieMap(), Mapping)
+    assert isinstance(HashTrieMap(), abc.Mapping)
 
 
 def test_literalish_works():
@@ -346,6 +347,148 @@ def test_get():
     assert m1.get("foo") == "bar"
     assert m1.get("baz") is None
     assert m1.get("spam", "eggs") == "eggs"
+
+
+@pytest.mark.parametrize(
+    "view",
+    [pytest.param(methodcaller(p), id=p) for p in ["keys", "values", "items"]],
+)
+@pytest.mark.parametrize(
+    "cls",
+    [
+        abc.Set,
+        abc.MappingView,
+        abc.KeysView,
+        abc.ValuesView,
+        abc.ItemsView,
+    ],
+)
+def test_views_abc(view, cls):
+    m, d = HashTrieMap(), {}
+    assert isinstance(view(m), cls) == isinstance(view(d), cls)
+
+
+def test_keys():
+    k = HashTrieMap({1: 2, 3: 4}).keys()
+
+    assert 1 in k
+
+    assert k == {1, 3}
+    assert k != iter({1, 3})
+    assert k == HashTrieMap({1: 2, 3: 4}).keys()
+    assert k != {1, 2, 3}
+    assert k != {1, 4}
+    assert not k == {1, 4}
+
+    assert k != object()
+
+
+def test_keys_setlike():
+    assert {1: 2, 3: 4}.keys() & HashTrieMap({1: 2}).keys() == {1}
+    assert {1: 2, 3: 4}.keys() & HashTrieMap({1: 2}).keys() != {1, 2}
+    assert HashTrieMap({1: 2}).keys() & {1: 2, 3: 4}.keys() == {1}
+    assert HashTrieMap({1: 2}).keys() & {1: 2, 3: 4}.keys() != {2}
+    assert not HashTrieMap({1: 2}).keys() & {}.keys()
+    assert HashTrieMap({1: 2}).keys() & {1} == {1}
+    assert HashTrieMap({1: 2}).keys() & [1] == {1}
+
+    assert HashTrieMap({1: 2}).keys() | {3} == {1, 3}
+    assert HashTrieMap({1: 2}).keys() | [3] == {1, 3}
+
+    # these don't really exist on the KeysView protocol but it's nice to have
+    s = (1, "foo")
+    assert HashTrieMap({1: 2, "foo": 7}).keys().intersection(s) == set(s)
+    assert not HashTrieMap({1: 2}).keys().intersection({})
+    assert HashTrieMap({1: 2}).keys().union({3}) == {1, 3}
+
+    assert HashTrieMap({1: 2, 3: 4}).keys() < {1, 2, 3}
+    assert HashTrieMap({1: 2, 3: 4}).keys() <= {1, 2, 3}
+    assert not HashTrieMap({1: 2}).keys() < {1}
+    assert HashTrieMap({1: 2}).keys() > set()
+    assert HashTrieMap({1: 2}).keys() >= set()
+
+
+def test_keys_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar"})
+    assert repr(m.keys()) in {
+        "keys_view({'foo', 37})",
+        "keys_view({37, 'foo'})",
+    }
+
+
+def test_values():
+    v = HashTrieMap({1: 2, 3: 4}).values()
+    assert 2 in v
+    assert 3 not in v
+    assert object() not in v
+
+    assert len(v) == 2
+
+    assert set(v) == {2, 4}
+
+
+def test_values_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar", "baz": 3})
+    assert repr(m.values()) in {
+        "values_view(['bar', 3, 3])",
+        "values_view([3, 'bar', 3])",
+        "values_view([3, 3, 'bar'])",
+    }
+
+
+def test_items():
+    k = HashTrieMap({1: 2, 3: 4}).items()
+
+    assert (1, 2) in k
+
+    assert k == {(1, 2), (3, 4)}
+    assert k != iter({(1, 2), (3, 4)})
+    assert k != {(1, 2, 3), (3, 4, 5)}
+    assert k == {1: 2, 3: 4}.items()
+    assert k != {(1, 2), (3, 4), (5, 6)}
+    assert k != {(1, 2)}
+    assert not k == {1, 4}
+
+    assert k != object()
+
+
+def test_items_setlike():
+    assert {1: 2, 3: 4}.items() & HashTrieMap({1: 2}).items() == {(1, 2)}
+    assert {1: 2, 3: 4}.items() & HashTrieMap({1: 2}).items() != {(1, 2), 3}
+
+    assert HashTrieMap({1: 2}).items() & {1: 2, 3: 4}.items() == {(1, 2)}
+    assert HashTrieMap({1: 2}).items() & {1: 2, 3: 4}.items() != {(3, 4)}
+    assert not HashTrieMap({1: 2}).items() & {}.items()
+
+    assert HashTrieMap({1: 2}).items() & [(1, 2)] == {(1, 2)}
+    assert HashTrieMap({1: 2}).items() & [[1, 2]] == set()
+
+    assert HashTrieMap({1: 2}).items() | {(3, 4)} == {(1, 2), (3, 4)}
+    assert HashTrieMap({1: 2}).items() | [7] == {(1, 2), 7}
+
+    s = ((1, 2), ("foo", 37))
+    assert HashTrieMap({1: 2, "foo": 7}).items().intersection(s) == {(1, 2)}
+    assert not HashTrieMap({1: 2}).items().intersection({})
+
+    assert HashTrieMap({1: 2}).items().union({3}) == {(1, 2), 3}
+
+    assert HashTrieMap({1: 2, 3: 4}).items() < {(1, 2), (3, 4), ("foo", "bar")}
+    assert HashTrieMap({1: 2, 3: 4}).items() <= {(1, 2), (3, 4)}
+    assert not HashTrieMap({1: 2}).keys() < {1}
+    assert HashTrieMap({1: 2}).items() > set()
+    assert HashTrieMap({1: 2}).items() >= set()
+
+
+def test_items_repr():
+    m = HashTrieMap({"foo": 3, 37: "bar", "baz": 3})
+    assert repr(m.items()) in {
+        "items_view([('foo', 3), (37, 'bar'), ('baz', 3)])",
+        "items_view([('foo', 3), ('baz', 3), (37, 'bar')])",
+        "items_view([(37, 'bar'), ('foo', 3), ('baz', 3)])",
+        "items_view([(37, 'bar'), ('baz', 3), ('foo', 3)])",
+        "items_view([('baz', 3), (37, 'bar'), ('foo', 3)])",
+        "items_view([('baz', 3), ('foo', 3), (37, 'bar')])",
+    }
 
 
 def test_fromkeys():

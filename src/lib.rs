@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use pyo3::exceptions::PyIndexError;
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
+use pyo3::types::{PyDict, PyIterator, PyNone, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping};
 use pyo3::{prelude::*, AsPyPointer, PyTypeInfo};
 use rpds::{
@@ -338,6 +338,75 @@ struct KeysView {
 
 #[pymethods]
 impl KeysView {
+    fn __contains__(&self, key: Key) -> bool {
+        self.inner.contains_key(&key)
+    }
+
+    fn __eq__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            if !slf.inner.contains_key(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __lt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
+            return Ok(false);
+        }
+        for each in slf.inner.keys() {
+            if !other.contains(each.inner.to_owned())? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __le__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? < slf.inner.size() {
+            return Ok(false);
+        }
+        for each in slf.inner.keys() {
+            if !other.contains(each.inner.to_owned())? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __gt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            if !slf.inner.contains_key(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __ge__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            if !slf.inner.contains_key(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
         KeysIterator {
             inner: slf.inner.clone(),
@@ -346,6 +415,49 @@ impl KeysView {
 
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
+    }
+
+    fn __and__(slf: PyRef<'_, Self>, other: &PyAny) -> PyResult<HashTrieSetPy> {
+        KeysView::intersection(slf, other)
+    }
+
+    fn __or__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<KeysView> {
+        KeysView::union(slf, other, py)
+    }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(k, _)| {
+            k.clone()
+                .inner
+                .into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("keys_view({{{}}})", contents.collect::<Vec<_>>().join(", "))
+    }
+
+    fn intersection(slf: PyRef<'_, Self>, other: &PyAny) -> PyResult<HashTrieSetPy> {
+        // TODO: iterate over the shorter one if it's got a length
+        let mut inner = HashTrieSet::new_sync();
+        for each in other.iter()? {
+            let key = Key::extract(each?)?;
+            if slf.inner.contains_key(&key) {
+                inner.insert_mut(key);
+            }
+        }
+        Ok(HashTrieSetPy { inner })
+    }
+
+    fn union(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<KeysView> {
+        // There doesn't seem to be a low-effort way to get a HashTrieSet out of a map,
+        // so we just keep our map and add values we'll ignore.
+        let mut inner = slf.inner.clone();
+        let none = PyNone::get(py);
+        for each in other.iter()? {
+            inner.insert_mut(Key::extract(each?)?, none.into());
+        }
+        Ok(KeysView { inner })
     }
 }
 
@@ -365,6 +477,16 @@ impl ValuesView {
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
     }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(_, v)| {
+            v.into_py(py)
+                .call_method0(py, "__repr__")
+                .and_then(|r| r.extract(py))
+                .unwrap_or("<repr failed>".to_owned())
+        });
+        format!("values_view([{}])", contents.collect::<Vec<_>>().join(", "))
+    }
 }
 
 #[pyclass(module = "rpds")]
@@ -374,6 +496,13 @@ struct ItemsView {
 
 #[pymethods]
 impl ItemsView {
+    fn __contains__(slf: PyRef<'_, Self>, item: (Key, &PyAny)) -> PyResult<bool> {
+        if let Some(value) = slf.inner.get(&item.0) {
+            return item.1.eq(value);
+        }
+        Ok(false)
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> ItemsIterator {
         ItemsIterator {
             inner: slf.inner.clone(),
@@ -382,6 +511,136 @@ impl ItemsView {
 
     fn __len__(slf: PyRef<'_, Self>) -> usize {
         slf.inner.size()
+    }
+
+    fn __eq__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
+            return Ok(false);
+        }
+        for (k, v) in slf.inner.iter() {
+            if !other.contains((k.inner.to_owned(), v))? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __repr__(&self, py: Python) -> String {
+        let contents = self.inner.into_iter().map(|(k, v)| {
+            let tuple = PyTuple::new(py, [k.inner.to_owned(), v.to_owned()]);
+            format!("{:?}", tuple)
+        });
+        format!("items_view([{}])", contents.collect::<Vec<_>>().join(", "))
+    }
+
+    fn __lt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
+            return Ok(false);
+        }
+        for (k, v) in slf.inner.iter() {
+            let pair = PyTuple::new(py, [k.inner.to_owned(), v.to_owned()]);
+            // FIXME: needs to compare
+            if !other.contains(pair)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __le__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? < slf.inner.size() {
+            return Ok(false);
+        }
+        for (k, v) in slf.inner.iter() {
+            let pair = PyTuple::new(py, [k.inner.to_owned(), v.to_owned()]);
+            // FIXME: needs to compare
+            if !other.contains(pair)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __gt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            let kv = each?;
+            let k = kv.get_item(0)?;
+            match slf.inner.get(&Key::extract(k)?) {
+                Some(value) => {
+                    let pair = PyTuple::new(py, [k, value.as_ref(py)]);
+                    if !pair.eq(kv)? {
+                        return Ok(false);
+                    }
+                }
+                None => return Ok(false),
+            }
+        }
+        Ok(true)
+    }
+
+    fn __ge__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            let kv = each?;
+            let k = kv.get_item(0)?;
+            match slf.inner.get(&Key::extract(k)?) {
+                Some(value) => {
+                    let pair = PyTuple::new(py, [k, value.as_ref(py)]);
+                    if !pair.eq(kv)? {
+                        return Ok(false);
+                    }
+                }
+                None => return Ok(false),
+            }
+        }
+        Ok(true)
+    }
+
+    fn __and__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<HashTrieSetPy> {
+        ItemsView::intersection(slf, other, py)
+    }
+
+    fn __or__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<HashTrieSetPy> {
+        ItemsView::union(slf, other, py)
+    }
+
+    fn intersection(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<HashTrieSetPy> {
+        // TODO: iterate over the shorter one if it's got a length
+        let mut inner = HashTrieSet::new_sync();
+        for each in other.iter()? {
+            let kv = each?;
+            let k = kv.get_item(0)?;
+            if let Some(value) = slf.inner.get(&Key::extract(k)?) {
+                let pair = PyTuple::new(py, [k, value.as_ref(py)]);
+                if pair.eq(kv)? {
+                    inner.insert_mut(Key::extract(pair)?);
+                }
+            }
+        }
+        Ok(HashTrieSetPy { inner })
+    }
+
+    fn union(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<HashTrieSetPy> {
+        // TODO: this is very inefficient, but again can't seem to get a HashTrieSet out of ourself
+        let mut inner = HashTrieSet::new_sync();
+        for (k, v) in slf.inner.iter() {
+            let pair = PyTuple::new(py, [k.inner.to_owned(), v.to_owned()]);
+            inner.insert_mut(Key::extract(pair)?);
+        }
+        for each in other.iter()? {
+            inner.insert_mut(Key::extract(each?)?);
+        }
+        Ok(HashTrieSetPy { inner })
     }
 }
 
@@ -402,10 +661,6 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
     }
 }
 
-fn is_subset(one: &HashTrieSetSync<Key>, two: &HashTrieSetSync<Key>) -> bool {
-    one.iter().all(|v| two.contains(v))
-}
-
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
@@ -417,6 +672,10 @@ impl HashTrieSetPy {
                 inner: HashTrieSet::new_sync(),
             }
         }
+    }
+
+    fn __contains__(&self, key: Key) -> bool {
+        self.inner.contains(&key)
     }
 
     fn __and__(&self, other: &Self) -> Self {
@@ -459,20 +718,69 @@ impl HashTrieSetPy {
         )
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
-        match op {
-            CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
-                && is_subset(&self.inner, &other.inner))
-            .into_py(py)),
-            CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
-                || self.inner.iter().any(|k| !other.inner.contains(k)))
-            .into_py(py)),
-            CompareOp::Lt => Ok((self.inner.size() < other.inner.size()
-                && is_subset(&self.inner, &other.inner))
-            .into_py(py)),
-            CompareOp::Le => Ok(is_subset(&self.inner, &other.inner).into_py(py)),
-            _ => Ok(py.NotImplemented()),
+    fn __eq__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
+            return Ok(false);
         }
+        for each in other.iter()? {
+            if !slf.inner.contains(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __lt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
+            return Ok(false);
+        }
+        for each in slf.inner.iter() {
+            if !other.contains(each.inner.to_owned())? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __le__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? < slf.inner.size() {
+            return Ok(false);
+        }
+        for each in slf.inner.iter() {
+            if !other.contains(each.inner.to_owned())? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __gt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            if !slf.inner.contains(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __ge__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
+        let abc = PyModule::import(py, "collections.abc")?;
+        if !other.is_instance(abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
+            return Ok(false);
+        }
+        for each in other.iter()? {
+            if !slf.inner.contains(&Key::extract(each?)?) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     fn __reduce__(slf: PyRef<Self>) -> (&PyType, (Vec<Key>,)) {
@@ -885,9 +1193,30 @@ impl QueuePy {
 #[pyo3(name = "rpds")]
 fn rpds_py(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<HashTrieMapPy>()?;
-    PyMapping::register::<HashTrieMapPy>(py)?;
     m.add_class::<HashTrieSetPy>()?;
     m.add_class::<ListPy>()?;
     m.add_class::<QueuePy>()?;
+
+    PyMapping::register::<HashTrieMapPy>(py)?;
+
+    let abc = PyModule::import(py, "collections.abc")?;
+
+    abc.getattr("Set")?
+        .call_method1("register", (HashTrieSetPy::type_object(py),))?;
+
+    abc.getattr("MappingView")?
+        .call_method1("register", (KeysView::type_object(py),))?;
+    abc.getattr("MappingView")?
+        .call_method1("register", (ValuesView::type_object(py),))?;
+    abc.getattr("MappingView")?
+        .call_method1("register", (ItemsView::type_object(py),))?;
+
+    abc.getattr("KeysView")?
+        .call_method1("register", (KeysView::type_object(py),))?;
+    abc.getattr("ValuesView")?
+        .call_method1("register", (ValuesView::type_object(py),))?;
+    abc.getattr("ItemsView")?
+        .call_method1("register", (ItemsView::type_object(py),))?;
+
     Ok(())
 }
