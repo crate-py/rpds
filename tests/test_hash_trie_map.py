@@ -369,13 +369,20 @@ def test_views_abc(view, cls):
 
 
 def test_keys():
-    k = HashTrieMap({1: 2, 3: 4}).keys()
+    d = HashTrieMap({1: 2, 3: 4})
+    k = d.keys()
 
     assert 1 in k
+    assert 2 not in k
+    assert object() not in k
 
-    assert k == {1, 3}
-    assert k != iter({1, 3})
+    assert len(k) == 2
+
+    assert k == d.keys()
     assert k == HashTrieMap({1: 2, 3: 4}).keys()
+    assert k == {1, 3}
+
+    assert k != iter({1, 3})
     assert k != {1, 2, 3}
     assert k != {1, 4}
     assert not k == {1, 4}
@@ -417,12 +424,19 @@ def test_keys_repr():
 
 
 def test_values():
-    v = HashTrieMap({1: 2, 3: 4}).values()
+    d = HashTrieMap({1: 2, 3: 4})
+    v = d.values()
+
     assert 2 in v
     assert 3 not in v
     assert object() not in v
 
     assert len(v) == 2
+
+    assert v == v
+    # https://bugs.python.org/issue12445 which was WONTFIXed
+    assert v != HashTrieMap({1: 2, 3: 4}).values()
+    assert v != [2, 4]
 
     assert set(v) == {2, 4}
 
@@ -437,19 +451,26 @@ def test_values_repr():
 
 
 def test_items():
-    k = HashTrieMap({1: 2, 3: 4}).items()
+    d = HashTrieMap({1: 2, 3: 4})
+    i = d.items()
 
-    assert (1, 2) in k
+    assert (1, 2) in i
+    assert (1, 4) not in i
 
-    assert k == {(1, 2), (3, 4)}
-    assert k != iter({(1, 2), (3, 4)})
-    assert k != {(1, 2, 3), (3, 4, 5)}
-    assert k == {1: 2, 3: 4}.items()
-    assert k != {(1, 2), (3, 4), (5, 6)}
-    assert k != {(1, 2)}
-    assert not k == {1, 4}
+    assert len(i) == 2
 
-    assert k != object()
+    assert i == d.items()
+    assert i == HashTrieMap({1: 2, 3: 4}).items()
+    assert i == {(1, 2), (3, 4)}
+
+    assert i != iter({(1, 2), (3, 4)})
+    assert i != {(1, 2, 3), (3, 4, 5)}
+    assert i == {1: 2, 3: 4}.items()
+    assert i != {(1, 2), (3, 4), (5, 6)}
+    assert i != {(1, 2)}
+    assert not i == {1, 4}
+
+    assert i != object()
 
 
 def test_items_setlike():
