@@ -89,12 +89,6 @@ def test_repr():
     assert str(Queue([1, 2, 3])) in "Queue([1, 2, 3])"
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
-def test_hashing():
-    assert hash(Queue([1, 2])) == hash(Queue([1, 2]))
-    assert hash(Queue([1, 2])) != hash(Queue([2, 1]))
-
-
 def test_sequence():
     m = Queue("asdf")
     assert m == Queue(["a", "s", "d", "f"])
@@ -131,3 +125,15 @@ def test_more_eq():
     assert not (Queue([o, o]) != Queue([o, o]))
     assert not (Queue([o]) != Queue([o]))
     assert not (Queue() != Queue([]))
+
+
+def test_hashing():
+    assert hash(Queue([1, 2])) == hash(Queue([1, 2]))
+    assert hash(Queue([1, 2])) != hash(Queue([2, 1]))
+    assert len({Queue([1, 2]), Queue([1, 2])}) == 1
+
+
+def test_unhashable_contents():
+    q = Queue([1, {1}])
+    with pytest.raises(TypeError):
+        hash(q)

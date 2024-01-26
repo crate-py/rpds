@@ -1,3 +1,4 @@
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use pyo3::exceptions::PyIndexError;
@@ -1127,6 +1128,16 @@ impl QueuePy {
                 .zip(other.inner.iter())
                 .map(|(e1, e2)| PyAny::eq(e1.extract(py)?, e2))
                 .all(|r| r.unwrap_or(false))
+    }
+
+    fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
+        let hash = PyModule::import(py, "builtins")?.getattr("hash")?;
+        let mut hasher = DefaultHasher::new();
+        for each in &self.inner {
+            let n: i64 = hash.call1((each.into_py(py),))?.extract()?;
+            hasher.write_i64(n);
+        }
+        Ok(hasher.finish())
     }
 
     fn __ne__(&self, other: &Self, py: Python<'_>) -> bool {
