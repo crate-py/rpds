@@ -26,6 +26,7 @@ Pre-modification, these were MIT licensed, and are copyright:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
     OTHER DEALINGS IN THE SOFTWARE.
 """
+
 from collections import abc
 from operator import methodcaller
 import pickle
