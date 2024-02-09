@@ -47,9 +47,8 @@ def test_key_is_not_tuple():
         HashTrieSet().remove("asdf")
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_supports_hash():
-    assert hash(HashTrieSet((1, 2))) == hash(HashTrieSet(1, 2))
+    assert hash(HashTrieSet((1, 2))) == hash(HashTrieSet((1, 2)))
 
 
 def test_empty_truthiness():
@@ -157,8 +156,10 @@ def test_iterable():
     assert HashTrieSet(iter("a")) == HashTrieSet(iter("a"))
 
 
+# Non-pyrsistent-test-suite tests
+
+
 def test_more_eq():
-    # Non-pyrsistent-test-suite test
     o = object()
 
     assert HashTrieSet([o]) == HashTrieSet([o])
@@ -206,3 +207,14 @@ def test_lt_le_gt_ge():
     assert HashTrieSet({}) <= {1}
     assert HashTrieSet({1}) > set()
     assert HashTrieSet({1}) >= set()
+
+
+def test_hashing():
+    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([1, 2]))
+    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([2, 1]))
+    assert len({HashTrieSet([1, 2]), HashTrieSet([1, 2])}) == 1
+
+    o = object()
+    assert hash(HashTrieSet([7, 2, "foo", o])) == hash(
+        HashTrieSet([o, "foo", 2, 7]),
+    )

@@ -732,6 +732,19 @@ impl HashTrieSetPy {
         Ok(true)
     }
 
+    fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
+        let hash = PyModule::import(py, "builtins")?.getattr("hash")?;
+        let mut hasher = DefaultHasher::new();
+        // FIXME: This is wrong, because it needs to mix commutatively.
+        //        I have to stare at https://github.com/python/cpython/blob/fa7880604191f81cbdddc191216f7b1e39a74d8d/Objects/setobject.c#L767
+        //        or ideally find something existing on the Rust side, but HashMap does not implement Hash and BTreeMap is sorted.
+        for each in &self.inner {
+            let n: i64 = hash.call1((each.inner.to_owned(),))?.extract()?;
+            hasher.write_i64(n);
+        }
+        Ok(hasher.finish())
+    }
+
     fn __lt__(slf: PyRef<'_, Self>, other: &PyAny, py: Python) -> PyResult<bool> {
         let abc = PyModule::import(py, "collections.abc")?;
         if !other.is_instance(abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
