@@ -535,3 +535,13 @@ def test_fromkeys_explicit_value_not_copied():
     got[3].append(1)
 
     assert got == HashTrieMap((i, [1]) for i in keys)
+
+
+def test_update_with_iterable_of_kvs():
+    assert HashTrieMap({1: 2}).update(iter([(3, 4), ("5", 6)])) == HashTrieMap(
+        {
+            1: 2,
+            3: 4,
+            "5": 6,
+        },
+    )

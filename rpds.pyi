@@ -11,6 +11,8 @@ from typing import (
 _T = TypeVar("_T")
 _KT_co = TypeVar("_KT_co", covariant=True)
 _VT_co = TypeVar("_VT_co", covariant=True)
+_KU_co = TypeVar("_KU_co", covariant=True)
+_VU_co = TypeVar("_VU_co", covariant=True)
 
 class HashTrieMap(Mapping[_KT_co, _VT_co]):
     def __init__(
@@ -31,7 +33,10 @@ class HashTrieMap(Mapping[_KT_co, _VT_co]):
         key: _KT_co,
         val: _VT_co,
     ) -> HashTrieMap[_KT_co, _VT_co]: ...
-    def update(self, *args: Mapping): ...
+    def update(
+        self,
+        *args: Mapping[_KU_co, _VU_co] | Iterable[tuple[_KU_co, _VU_co]],
+    ) -> HashTrieMap[_KT_co | _KU_co, _VT_co | _VU_co]: ...
     @classmethod
     def convert(
         cls,
