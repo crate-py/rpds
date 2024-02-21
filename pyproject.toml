@@ -10,8 +10,7 @@ readme = "README.rst"
 license = {text = "MIT"}
 keywords = ["data structures", "rust", "persistent"]
 authors = [
-  {email = "Julian+rpds@GrayVines.com"},
-  {name = "Julian Berman"},
+  { name = "Julian Berman", email = "Julian+rpds@GrayVines.com" },
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
