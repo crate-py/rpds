@@ -89,7 +89,7 @@ jobs:
           sccache: "true"
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -116,7 +116,7 @@ jobs:
           manylinux: musllinux_1_2
           sccache: "true"
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -145,7 +145,7 @@ jobs:
           args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12'
           sccache: "true"
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -168,7 +168,7 @@ jobs:
           args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 3.12 pypy3.8 pypy3.9 pypy3.10'
           sccache: "true"
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -184,7 +184,7 @@ jobs:
           command: sdist
           args: --out dist
       - name: Upload sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
