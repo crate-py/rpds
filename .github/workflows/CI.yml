@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up nox
-        uses: wntrblm/nox@2024.03.02
+        uses: wntrblm/nox@2024.04.15
       - id: noxenvs-matrix
         run: |
           echo >>$GITHUB_OUTPUT noxenvs=$(
@@ -66,7 +66,7 @@ jobs:
             pypy3.10
           allow-prereleases: true
       - name: Set up nox
-        uses: wntrblm/nox@2024.03.02
+        uses: wntrblm/nox@2024.04.15
       - name: Run nox
         run: nox -s "${{ matrix.noxenv }}"
 
