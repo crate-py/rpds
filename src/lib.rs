@@ -104,7 +104,7 @@ impl<'source> FromPyObject<'source> for HashTrieMapPy {
 #[pymethods]
 impl HashTrieMapPy {
     #[new]
-    #[pyo3(signature = (value = None, * * kwds))]
+    #[pyo3(signature = (value=None, ** kwds))]
     fn init(value: Option<HashTrieMapPy>, kwds: Option<&Bound<'_, PyDict>>) -> PyResult<Self> {
         let mut map: HashTrieMapPy;
         if let Some(value) = value {
@@ -134,9 +134,7 @@ impl HashTrieMapPy {
 
     fn __getitem__(&self, key: Key) -> PyResult<PyObject> {
         match self.inner.get(&key) {
-            Some(value) => Python::with_gil(|py| {
-                Ok(value.clone_ref(py))
-            }),
+            Some(value) => Python::with_gil(|py| Ok(value.clone_ref(py))),
             None => Err(PyKeyError::new_err(key)),
         }
     }
@@ -168,24 +166,20 @@ impl HashTrieMapPy {
         match op {
             CompareOp::Eq => Ok((self.inner.size() == other.inner.size()
                 && self
-                .inner
-                .iter()
-                .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                .map(|(v1, v2)| {
-                    v1.bind(py).eq(v2)
-                })
-                .all(|r| r.unwrap_or(false)))
-                .into_py(py)),
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
+                    .map(|(v1, v2)| v1.bind(py).eq(v2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
             CompareOp::Ne => Ok((self.inner.size() != other.inner.size()
                 || self
-                .inner
-                .iter()
-                .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                .map(|(v1, v2)| {
-                    v1.bind(py).ne(v2)
-                })
-                .all(|r| r.unwrap_or(true)))
-                .into_py(py)),
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
+                    .map(|(v1, v2)| v1.bind(py).ne(v2))
+                    .all(|r| r.unwrap_or(true)))
+            .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
     }
@@ -195,9 +189,9 @@ impl HashTrieMapPy {
             (
                 HashTrieMapPy::type_object_bound(slf.py()),
                 (slf.inner
-                     .iter()
-                     .map(|(k, v)| (k.clone_ref(py), v.clone_ref(py)))
-                     .collect(),),
+                    .iter()
+                    .map(|(k, v)| (k.clone_ref(py), v.clone_ref(py)))
+                    .collect(),),
             )
         })
     }
@@ -234,9 +228,7 @@ impl HashTrieMapPy {
 
     fn get(&self, key: Key, default: Option<PyObject>) -> Option<PyObject> {
         if let Some(value) = self.inner.get(&key) {
-            Python::with_gil(|py| {
-                Some(value.clone_ref(py))
-            })
+            Python::with_gil(|py| Some(value.clone_ref(py)))
         } else {
             default
         }
@@ -286,7 +278,7 @@ impl HashTrieMapPy {
         }
     }
 
-    #[pyo3(signature = (* maps, * * kwds))]
+    #[pyo3(signature = (*maps, **kwds))]
     fn update(
         &self,
         maps: &Bound<'_, PyTuple>,
@@ -341,7 +333,7 @@ impl ValuesIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let kv = slf.inner.iter().next()?;
-        let value = Python::with_gil(|py| { kv.1.clone_ref(py) });
+        let value = Python::with_gil(|py| kv.1.clone_ref(py));
         slf.inner = slf.inner.remove(kv.0);
         Some(value)
     }
@@ -361,9 +353,7 @@ impl ItemsIterator {
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, PyObject)> {
         let kv = slf.inner.iter().next()?;
         let key = kv.0.to_owned();
-        let value = Python::with_gil(|py| {
-            kv.1.clone_ref(py)
-        });
+        let value = Python::with_gil(|py| kv.1.clone_ref(py));
 
         slf.inner = slf.inner.remove(kv.0);
 
@@ -548,9 +538,7 @@ impl<'source> FromPyObject<'source> for ItemViewQuery {
         let k = tuple_bound.get_item(0)?;
         let v = tuple_bound.get_item(1)?;
 
-        Python::with_gil(|py| {
-            Ok(ItemViewQuery(Key::extract_bound(&k)?, v.into_py(py)))
-        })
+        Python::with_gil(|py| Ok(ItemViewQuery(Key::extract_bound(&k)?, v.into_py(py))))
     }
 }
 
@@ -558,9 +546,7 @@ impl<'source> FromPyObject<'source> for ItemViewQuery {
 impl ItemsView {
     fn __contains__(slf: PyRef<'_, Self>, item: ItemViewQuery) -> PyResult<bool> {
         if let Some(value) = slf.inner.get(&item.0) {
-            return Python::with_gil(|py| {
-                item.1.bind(py).eq(value)
-            });
+            return Python::with_gil(|py| item.1.bind(py).eq(value));
         }
 
         Ok(false)
@@ -972,7 +958,7 @@ impl HashTrieSetPy {
         HashTrieSetPy { inner }
     }
 
-    #[pyo3(signature = (* iterables))]
+    #[pyo3(signature = (*iterables))]
     fn update(&self, iterables: Bound<'_, PyTuple>) -> PyResult<HashTrieSetPy> {
         let mut inner = self.inner.clone();
         for each in iterables {
@@ -1030,7 +1016,7 @@ impl<'source> FromPyObject<'source> for ListPy {
 #[pymethods]
 impl ListPy {
     #[new]
-    #[pyo3(signature = (* elements))]
+    #[pyo3(signature = (*elements))]
     fn init(elements: &Bound<'_, PyTuple>) -> PyResult<Self> {
         let mut ret: ListPy;
         if elements.len() == 1 {
@@ -1067,20 +1053,20 @@ impl ListPy {
         match op {
             CompareOp::Eq => Ok((self.inner.len() == other.inner.len()
                 && self
-                .inner
-                .iter()
-                .zip(other.inner.iter())
-                .map(|(e1, e2)| e1.bind(py).eq(e2))
-                .all(|r| r.unwrap_or(false)))
-                .into_py(py)),
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| e1.bind(py).eq(e2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
             CompareOp::Ne => Ok((self.inner.len() != other.inner.len()
                 || self
-                .inner
-                .iter()
-                .zip(other.inner.iter())
-                .map(|(e1, e2)| e1.bind(py).ne(e2))
-                .any(|r| r.unwrap_or(true)))
-                .into_py(py)),
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| e1.bind(py).ne(e2))
+                    .any(|r| r.unwrap_or(true)))
+            .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }
     }
@@ -1148,9 +1134,7 @@ impl ListIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let first_op = slf.inner.first()?;
-        let first = Python::with_gil(|py| {
-            first_op.clone_ref(py)
-        });
+        let first = Python::with_gil(|py| first_op.clone_ref(py));
 
         slf.inner = slf.inner.drop_first()?;
 
@@ -1171,9 +1155,7 @@ impl QueueIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let first_op = slf.inner.peek()?;
-        let first = Python::with_gil(|py| {
-            first_op.clone_ref(py)
-        });
+        let first = Python::with_gil(|py| first_op.clone_ref(py));
         slf.inner = slf.inner.dequeue()?;
         Some(first)
     }
@@ -1204,7 +1186,7 @@ impl<'source> FromPyObject<'source> for QueuePy {
 #[pymethods]
 impl QueuePy {
     #[new]
-    #[pyo3(signature = (* elements))]
+    #[pyo3(signature = (*elements))]
     fn init(elements: &Bound<'_, PyTuple>, py: Python<'_>) -> PyResult<Self> {
         let mut ret: QueuePy;
         if elements.len() == 1 {
@@ -1225,11 +1207,11 @@ impl QueuePy {
     fn __eq__(&self, other: &Self, py: Python<'_>) -> bool {
         (self.inner.len() == other.inner.len())
             && self
-            .inner
-            .iter()
-            .zip(other.inner.iter())
-            .map(|(e1, e2)| e1.bind(py).eq(e2))
-            .all(|r| r.unwrap_or(false))
+                .inner
+                .iter()
+                .zip(other.inner.iter())
+                .map(|(e1, e2)| e1.bind(py).eq(e2))
+                .all(|r| r.unwrap_or(false))
     }
 
     fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
@@ -1245,11 +1227,11 @@ impl QueuePy {
     fn __ne__(&self, other: &Self, py: Python<'_>) -> bool {
         (self.inner.len() != other.inner.len())
             || self
-            .inner
-            .iter()
-            .zip(other.inner.iter())
-            .map(|(e1, e2)| e1.bind(py).ne(e2))
-            .any(|r| r.unwrap_or(true))
+                .inner
+                .iter()
+                .zip(other.inner.iter())
+                .map(|(e1, e2)| e1.bind(py).ne(e2))
+                .any(|r| r.unwrap_or(true))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> QueueIterator {
