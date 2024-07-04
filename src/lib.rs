@@ -208,6 +208,7 @@ impl HashTrieMapPy {
     }
 
     #[classmethod]
+    #[pyo3(signature = (keys, val=None))]
     fn fromkeys(
         _cls: &Bound<'_, PyType>,
         keys: &Bound<'_, PyAny>,
@@ -224,6 +225,7 @@ impl HashTrieMapPy {
         Ok(HashTrieMapPy { inner })
     }
 
+    #[pyo3(signature = (key, default=None))]
     fn get(&self, key: Key, default: Option<PyObject>) -> Option<PyObject> {
         if let Some(value) = self.inner.get(&key) {
             Python::with_gil(|py| Some(value.clone_ref(py)))
@@ -721,6 +723,7 @@ impl<'source> FromPyObject<'source> for HashTrieSetPy {
 #[pymethods]
 impl HashTrieSetPy {
     #[new]
+    #[pyo3(signature = (value=None))]
     fn init(value: Option<HashTrieSetPy>) -> Self {
         if let Some(value) = value {
             value
