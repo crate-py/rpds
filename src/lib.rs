@@ -185,15 +185,13 @@ impl HashTrieMapPy {
     }
 
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, PyObject)>,)) {
-        Python::with_gil(|py| {
-            (
-                HashTrieMapPy::type_object_bound(slf.py()),
-                (slf.inner
-                    .iter()
-                    .map(|(k, v)| (k.clone_ref(py), v.clone_ref(py)))
-                    .collect(),),
-            )
-        })
+        (
+            HashTrieMapPy::type_object_bound(slf.py()),
+            (slf.inner
+                .iter()
+                .map(|(k, v)| (k.clone_ref(slf.py()), v.clone_ref(slf.py())))
+                .collect(),),
+        )
     }
 
     #[classmethod]
@@ -218,7 +216,7 @@ impl HashTrieMapPy {
     ) -> PyResult<HashTrieMapPy> {
         let mut inner = HashTrieMap::new_sync();
         let none = py.None().into_bound(py);
-        let value = val.unwrap_or_else(|| &none);
+        let value = val.unwrap_or(&none);
         for each in keys.iter()? {
             let key = Key::extract_bound(&each?)?;
             inner.insert_mut(key, value.clone().unbind());
@@ -287,11 +285,9 @@ impl HashTrieMapPy {
         let mut inner = self.inner.clone();
         for value in maps {
             let map = HashTrieMapPy::extract_bound(&value)?;
-            Python::with_gil(|py| {
-                for (k, v) in &map.inner {
-                    inner.insert_mut(k.clone_ref(py), v.clone_ref(py));
-                }
-            })
+            for (k, v) in &map.inner {
+                inner.insert_mut(k.clone_ref(value.py()), v.clone_ref(value.py()));
+            }
         }
         if let Some(kwds) = kwds {
             for (k, v) in kwds {
@@ -333,7 +329,7 @@ impl ValuesIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let kv = slf.inner.iter().next()?;
-        let value = Python::with_gil(|py| kv.1.clone_ref(py));
+        let value = kv.1.clone_ref(slf.py());
         slf.inner = slf.inner.remove(kv.0);
         Some(value)
     }
@@ -353,7 +349,7 @@ impl ItemsIterator {
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, PyObject)> {
         let kv = slf.inner.iter().next()?;
         let key = kv.0.to_owned();
-        let value = Python::with_gil(|py| kv.1.clone_ref(py));
+        let value = kv.1.clone_ref(slf.py());
 
         slf.inner = slf.inner.remove(kv.0);
 
@@ -391,14 +387,12 @@ impl KeysView {
             return Ok(false);
         }
 
-        Python::with_gil(|py| {
-            for each in slf.inner.keys() {
-                if !other.contains(each.inner.clone_ref(py))? {
-                    return Ok(false);
-                }
+        for each in slf.inner.keys() {
+            if !other.contains(each.inner.clone_ref(slf.py()))? {
+                return Ok(false);
             }
-            Ok(true)
-        })
+        }
+        Ok(true)
     }
 
     fn __le__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -407,14 +401,12 @@ impl KeysView {
             return Ok(false);
         }
 
-        Python::with_gil(|py| {
-            for each in slf.inner.keys() {
-                if !other.contains(each.inner.clone_ref(py))? {
-                    return Ok(false);
-                }
+        for each in slf.inner.keys() {
+            if !other.contains(each.inner.clone_ref(slf.py()))? {
+                return Ok(false);
             }
-            Ok(true)
-        })
+        }
+        Ok(true)
     }
 
     fn __gt__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -538,7 +530,7 @@ impl<'source> FromPyObject<'source> for ItemViewQuery {
         let k = tuple_bound.get_item(0)?;
         let v = tuple_bound.get_item(1)?;
 
-        Python::with_gil(|py| Ok(ItemViewQuery(Key::extract_bound(&k)?, v.into_py(py))))
+        Ok(ItemViewQuery(Key::extract_bound(&k)?, v.into_py(ob.py())))
     }
 }
 
@@ -546,7 +538,7 @@ impl<'source> FromPyObject<'source> for ItemViewQuery {
 impl ItemsView {
     fn __contains__(slf: PyRef<'_, Self>, item: ItemViewQuery) -> PyResult<bool> {
         if let Some(value) = slf.inner.get(&item.0) {
-            return Python::with_gil(|py| item.1.bind(py).eq(value));
+            return item.1.bind(slf.py()).eq(value);
         }
 
         Ok(false)
@@ -567,14 +559,12 @@ impl ItemsView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
             return Ok(false);
         }
-        Python::with_gil(|py| {
-            for (k, v) in slf.inner.iter() {
-                if !other.contains((k.inner.clone_ref(py), v))? {
-                    return Ok(false);
-                }
+        for (k, v) in slf.inner.iter() {
+            if !other.contains((k.inner.clone_ref(slf.py()), v))? {
+                return Ok(false);
             }
-            Ok(true)
-        })
+        }
+        Ok(true)
     }
 
     fn __repr__(&self, py: Python) -> String {
@@ -803,14 +793,12 @@ impl HashTrieSetPy {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
             return Ok(false);
         }
-        Python::with_gil(|py| {
-            for each in slf.inner.iter() {
-                if !other.contains(each.inner.clone_ref(py))? {
-                    return Ok(false);
-                }
+        for each in slf.inner.iter() {
+            if !other.contains(each.inner.clone_ref(py))? {
+                return Ok(false);
             }
-            Ok(true)
-        })
+        }
+        Ok(true)
     }
 
     fn __le__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -818,14 +806,12 @@ impl HashTrieSetPy {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? < slf.inner.size() {
             return Ok(false);
         }
-        Python::with_gil(|py| {
-            for each in slf.inner.iter() {
-                if !other.contains(each.inner.clone_ref(py))? {
-                    return Ok(false);
-                }
+        for each in slf.inner.iter() {
+            if !other.contains(each.inner.clone_ref(slf.py()))? {
+                return Ok(false);
             }
-            Ok(true)
-        })
+        }
+        Ok(true)
     }
 
     fn __gt__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -857,9 +843,7 @@ impl HashTrieSetPy {
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<Key>,)) {
         (
             HashTrieSetPy::type_object_bound(slf.py()),
-            (Python::with_gil(|py| {
-                slf.inner.iter().map(|e| e.clone_ref(py)).collect()
-            }),),
+            (slf.inner.iter().map(|e| e.clone_ref(slf.py())).collect(),),
         )
     }
 
@@ -1086,9 +1070,7 @@ impl ListPy {
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<PyObject>,)) {
         (
             ListPy::type_object_bound(slf.py()),
-            (Python::with_gil(|py| {
-                slf.inner.iter().map(|e| e.clone_ref(py)).collect()
-            }),),
+            (slf.inner.iter().map(|e| e.clone_ref(slf.py())).collect(),),
         )
     }
 
@@ -1134,7 +1116,7 @@ impl ListIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let first_op = slf.inner.first()?;
-        let first = Python::with_gil(|py| first_op.clone_ref(py));
+        let first = first_op.clone_ref(slf.py());
 
         slf.inner = slf.inner.drop_first()?;
 
@@ -1155,7 +1137,7 @@ impl QueueIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         let first_op = slf.inner.peek()?;
-        let first = Python::with_gil(|py| first_op.clone_ref(py));
+        let first = first_op.clone_ref(slf.py());
         slf.inner = slf.inner.dequeue()?;
         Some(first)
     }
