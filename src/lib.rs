@@ -44,12 +44,6 @@ impl Key {
     }
 }
 
-impl Clone for Key {
-    fn clone(&self) -> Self {
-        Python::with_gil(|py| self.clone_ref(py))
-    }
-}
-
 impl IntoPy<PyObject> for Key {
     fn into_py(self, py: Python<'_>) -> PyObject {
         self.inner.into_py(py)
@@ -132,9 +126,9 @@ impl HashTrieMapPy {
         }
     }
 
-    fn __getitem__(&self, key: Key) -> PyResult<PyObject> {
+    fn __getitem__(&self, key: Key, py: Python) -> PyResult<PyObject> {
         match self.inner.get(&key) {
-            Some(value) => Python::with_gil(|py| Ok(value.clone_ref(py))),
+            Some(value) => Ok(value.clone_ref(py)),
             None => Err(PyKeyError::new_err(key)),
         }
     }
@@ -226,9 +220,9 @@ impl HashTrieMapPy {
     }
 
     #[pyo3(signature = (key, default=None))]
-    fn get(&self, key: Key, default: Option<PyObject>) -> Option<PyObject> {
+    fn get(&self, key: Key, default: Option<PyObject>, py: Python) -> Option<PyObject> {
         if let Some(value) = self.inner.get(&key) {
-            Python::with_gil(|py| Some(value.clone_ref(py)))
+            Some(value.clone_ref(py))
         } else {
             default
         }
@@ -312,7 +306,7 @@ impl KeysIterator {
     }
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        let first = slf.inner.keys().next()?.to_owned();
+        let first = slf.inner.keys().next()?.clone_ref(slf.py());
         slf.inner = slf.inner.remove(&first);
         Some(first)
     }
@@ -350,7 +344,7 @@ impl ItemsIterator {
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, PyObject)> {
         let kv = slf.inner.iter().next()?;
-        let key = kv.0.to_owned();
+        let key = kv.0.clone_ref(slf.py());
         let value = kv.1.clone_ref(slf.py());
 
         slf.inner = slf.inner.remove(kv.0);
@@ -457,7 +451,7 @@ impl KeysView {
 
     fn __repr__(&self, py: Python) -> String {
         let contents = self.inner.into_iter().map(|(k, _)| {
-            k.clone()
+            k.clone_ref(py)
                 .inner
                 .into_py(py)
                 .call_method0(py, "__repr__")
@@ -738,20 +732,20 @@ impl HashTrieSetPy {
         self.inner.contains(&key)
     }
 
-    fn __and__(&self, other: &Self) -> Self {
-        self.intersection(other)
+    fn __and__(&self, other: &Self, py: Python) -> Self {
+        self.intersection(other, py)
     }
 
-    fn __or__(&self, other: &Self) -> Self {
-        self.union(other)
+    fn __or__(&self, other: &Self, py: Python) -> Self {
+        self.union(other, py)
     }
 
     fn __sub__(&self, other: &Self) -> Self {
         self.difference(other)
     }
 
-    fn __xor__(&self, other: &Self) -> Self {
-        self.symmetric_difference(other)
+    fn __xor__(&self, other: &Self, py: Python) -> Self {
+        self.symmetric_difference(other, py)
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> SetIterator {
@@ -766,7 +760,7 @@ impl HashTrieSetPy {
 
     fn __repr__(&self, py: Python) -> String {
         let contents = self.inner.into_iter().map(|k| {
-            k.clone()
+            k.clone_ref(py)
                 .into_py(py)
                 .call_method0(py, "__repr__")
                 .and_then(|r| r.extract(py))
@@ -884,7 +878,7 @@ impl HashTrieSetPy {
         HashTrieSetPy { inner }
     }
 
-    fn intersection(&self, other: &Self) -> HashTrieSetPy {
+    fn intersection(&self, other: &Self, py: Python) -> HashTrieSetPy {
         let mut inner: HashTrieSetSync<Key> = HashTrieSet::new_sync();
         let larger: &HashTrieSetSync<Key>;
         let iter;
@@ -895,53 +889,47 @@ impl HashTrieSetPy {
             larger = &other.inner;
             iter = self.inner.iter();
         }
-        Python::with_gil(|py| {
-            for value in iter {
-                if larger.contains(value) {
-                    inner.insert_mut(value.clone_ref(py));
-                }
-            }
-        });
-        HashTrieSetPy { inner }
-    }
-
-    fn symmetric_difference(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner: HashTrieSetSync<Key>;
-        let iter;
-        if self.inner.size() > other.inner.size() {
-            inner = self.inner.clone();
-            iter = other.inner.iter();
-        } else {
-            inner = other.inner.clone();
-            iter = self.inner.iter();
-        }
-        Python::with_gil(|py| {
-            for value in iter {
-                if inner.contains(value) {
-                    inner.remove_mut(value);
-                } else {
-                    inner.insert_mut(value.clone_ref(py));
-                }
-            }
-        });
-        HashTrieSetPy { inner }
-    }
-
-    fn union(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner: HashTrieSetSync<Key>;
-        let iter;
-        if self.inner.size() > other.inner.size() {
-            inner = self.inner.clone();
-            iter = other.inner.iter();
-        } else {
-            inner = other.inner.clone();
-            iter = self.inner.iter();
-        }
-        Python::with_gil(|py| {
-            for value in iter {
+        for value in iter {
+            if larger.contains(value) {
                 inner.insert_mut(value.clone_ref(py));
             }
-        });
+        }
+        HashTrieSetPy { inner }
+    }
+
+    fn symmetric_difference(&self, other: &Self, py: Python) -> HashTrieSetPy {
+        let mut inner: HashTrieSetSync<Key>;
+        let iter;
+        if self.inner.size() > other.inner.size() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            if inner.contains(value) {
+                inner.remove_mut(value);
+            } else {
+                inner.insert_mut(value.clone_ref(py));
+            }
+        }
+        HashTrieSetPy { inner }
+    }
+
+    fn union(&self, other: &Self, py: Python) -> HashTrieSetPy {
+        let mut inner: HashTrieSetSync<Key>;
+        let iter;
+        if self.inner.size() > other.inner.size() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            inner.insert_mut(value.clone_ref(py));
+        }
         HashTrieSetPy { inner }
     }
 
@@ -951,7 +939,7 @@ impl HashTrieSetPy {
         for each in iterables {
             let iter = each.iter()?;
             for value in iter {
-                inner.insert_mut(Key::extract_bound(&value?)?.to_owned());
+                inner.insert_mut(Key::extract_bound(&value?)?);
             }
         }
         Ok(HashTrieSetPy { inner })
@@ -970,7 +958,7 @@ impl SetIterator {
     }
 
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        let first = slf.inner.iter().next()?.to_owned();
+        let first = slf.inner.iter().next()?.clone_ref(slf.py());
         slf.inner = slf.inner.remove(&first);
         Some(first)
     }
@@ -1240,9 +1228,9 @@ impl QueuePy {
     }
 
     #[getter]
-    fn peek(&self) -> PyResult<PyObject> {
+    fn peek(&self, py: Python) -> PyResult<PyObject> {
         if let Some(peeked) = self.inner.peek() {
-            Ok(Python::with_gil(|py| peeked.clone_ref(py)))
+            Ok(peeked.clone_ref(py))
         } else {
             Err(PyIndexError::new_err("peeked an empty queue"))
         }
