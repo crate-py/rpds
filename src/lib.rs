@@ -517,18 +517,8 @@ struct ItemsView {
     inner: HashTrieMapSync<Key, PyObject>,
 }
 
+#[derive(FromPyObject)]
 struct ItemViewQuery(Key, PyObject);
-
-impl<'source> FromPyObject<'source> for ItemViewQuery {
-    fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
-        let tuple_bound: &Bound<'source, PyTuple> = ob.downcast()?;
-
-        let k = tuple_bound.get_item(0)?;
-        let v = tuple_bound.get_item(1)?;
-
-        Ok(ItemViewQuery(Key::extract_bound(&k)?, v.into_py(ob.py())))
-    }
-}
 
 #[pymethods]
 impl ItemsView {
