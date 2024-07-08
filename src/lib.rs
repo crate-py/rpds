@@ -193,7 +193,7 @@ impl HashTrieMapPy {
             })
             .collect::<PyResult<Vec<(i64, i64)>>>()?;
 
-        hash_vec.sort_unstable(); // Order of elements should not affect hash values (numbers)
+        hash_vec.sort_unstable(); // Order of identical elements should not affect hash values (numbers)
 
         for (key_hash, val_hash) in hash_vec {
             hasher.write_i128(((key_hash as i128) << 64) | (val_hash as i128));
@@ -813,7 +813,7 @@ impl HashTrieSetPy {
             })
             .collect::<PyResult<Vec<i64>>>()?;
 
-        hash_vec.sort_unstable(); // Order of elements should not affect hash values (numbers)
+        hash_vec.sort_unstable(); // Order of identical elements should not affect hash values (numbers)
 
         for hash_val in hash_vec {
             hasher.write_i64(hash_val);
