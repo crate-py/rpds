@@ -1059,6 +1059,16 @@ impl ListPy {
         }
     }
 
+    fn __hash__(&self, py: Python) -> PyResult<u64> {
+        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
+        let mut hasher = DefaultHasher::new();
+        for each in &self.inner {
+            let n: i64 = hash.call1((each.clone_ref(py),))?.extract()?;
+            hasher.write_i64(n);
+        }
+        Ok(hasher.finish())
+    }
+
     fn __iter__(slf: PyRef<'_, Self>) -> ListIterator {
         ListIterator {
             inner: slf.inner.clone(),

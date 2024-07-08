@@ -144,5 +144,23 @@ def test_more_eq():
     assert not (List() != List([]))
 
 
+def test_hash():
+    o = object()
+
+    assert hash(List([o, o])) == hash(List([o, o]))
+    assert hash(List([o])) == hash(List([o]))
+    assert hash(List()) == hash(List([]))
+    assert not (hash(List([1, 2])) == hash(List([1, 3])))
+    assert not (hash(List([o])) == hash(List([o, o])))
+    assert not (hash(List([])) == hash(List([o])))
+
+    assert hash(List([1, 2])) != hash(List([1, 3]))
+    assert hash(List([o])) != hash(List([o, o]))
+    assert hash(List([])) != hash(List([o]))
+    assert not (hash(List([o, o])) != hash(List([o, o])))
+    assert not (hash(List([o])) != hash(List([o])))
+    assert not (hash(List([])) != hash(List([])))
+
+
 def test_pickle():
     assert pickle.loads(pickle.dumps(List([1, 2, 3, 4]))) == List([1, 2, 3, 4])
