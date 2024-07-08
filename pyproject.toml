@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1.2,<2.0"]
 build-backend = "maturin"
 
 [project]
@@ -64,15 +64,6 @@ ignore = [
     "D001",  # one sentence per line, so max length doesn't make sense
 ]
 
-[tool.isort]
-combine_as_imports = true
-ensure_newline_before_comments = true
-from_first = true
-include_trailing_comma = true
-multi_line_output = 3
-known_first_party = ["rpds"]
-use_parentheses = true
-
 [tool.maturin]
 features = ["pyo3/extension-module"]
 
@@ -86,6 +77,8 @@ exclude = [
 
 [tool.ruff]
 line-length = 79
+
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
   "A001",  # It's fine to shadow builtins
@@ -93,6 +86,7 @@ ignore = [
   "A003",
   "ARG",  # This is all wrong whenever an interface is involved
   "ANN",  # Just let the type checker do this
+  "B006",  # Mutable arguments require care but are OK if you don't abuse them
   "B008",  # It's totally OK to call functions for default arguments.
   "B904",  # raise SomeException(...) is fine.
   "B905",  # No need for explicit strict, this is simply zip's default behavior
@@ -112,7 +106,6 @@ ignore = [
   "EM102",
   "FBT",  # It's worth avoiding boolean args but I don't care to enforce it
   "FIX",  # Yes thanks, if I could it wouldn't be there
-  "I001",  # We can't yet use ruff's isort
   "N",  # These naming rules are silly
   "PLR0912",  # These metrics are fine to be aware of but not to enforce
   "PLR0913",
@@ -130,17 +123,19 @@ ignore = [
   "TD",  # These TODO style rules are also silly
   "UP007",  # We support 3.8 + 3.9
 ]
+
 [tool.ruff.lint.flake8-pytest-style]
 mark-parentheses = false
 
-[tool.ruff.flake8-quotes]
+[tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 from-first = true
+known-first-party = ["rpds"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "noxfile.py" = ["ANN", "D100", "S101", "T201"]
 "docs/*" = ["ANN", "D", "INP001"]
 "tests/*" = ["ANN", "B018", "D", "PLR", "RUF012", "S", "SIM", "TRY"]

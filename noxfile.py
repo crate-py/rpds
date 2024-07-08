@@ -90,7 +90,16 @@ def style(session):
     Check Python code style.
     """
     session.install("ruff")
-    session.run("ruff", "check", ROOT)
+    session.run("ruff", "check", TESTS, __file__)
+
+
+@session()
+def typing(session):
+    """
+    Check the codebase using pyright by type checking the test suite.
+    """
+    session.install("pyright", ROOT, "-r", REQUIREMENTS["tests"])
+    session.run("pyright", TESTS)
 
 
 @session(tags=["docs"])
