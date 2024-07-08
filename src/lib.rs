@@ -775,6 +775,29 @@ impl HashTrieSetPy {
         Ok(true)
     }
 
+    fn __hash__(&self, py: Python) -> PyResult<u64> {
+        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
+
+        let mut hasher = DefaultHasher::new();
+
+        let mut hash_vec = self
+            .inner
+            .iter()
+            .map(|k| {
+                let hash_val: i64 = hash.call1((k.inner.clone_ref(py),))?.extract()?;
+                Ok(hash_val)
+            })
+            .collect::<PyResult<Vec<i64>>>()?;
+
+        hash_vec.sort_unstable(); // Order of elements should not affect hash values (numbers)
+
+        for hash_val in hash_vec {
+            hasher.write_i64(hash_val);
+        }
+
+        Ok(hasher.finish())
+    }
+
     fn __lt__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
         let abc = PyModule::import_bound(py, "collections.abc")?;
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
