@@ -66,8 +66,11 @@ jobs:
             3.13
             pypy3.10
           allow-prereleases: true
+      - name: Set up uv
+        uses: hynek/setup-cached-uv@v1
       - name: Set up nox
         uses: wntrblm/nox@2024.04.15
+
       - name: Run nox
         run: nox -s "${{ matrix.noxenv }}"
 

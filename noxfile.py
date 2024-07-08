@@ -5,21 +5,22 @@ import os
 import nox
 
 ROOT = Path(__file__).parent
-TESTS = ROOT / "tests"
 PYPROJECT = ROOT / "pyproject.toml"
 DOCS = ROOT / "docs"
+TESTS = ROOT / "tests"
 
 REQUIREMENTS = dict(
     docs=DOCS / "requirements.txt",
     tests=TESTS / "requirements.txt",
 )
 REQUIREMENTS_IN = [  # this is actually ordered, as files depend on each other
-    path.parent / f"{path.stem}.in" for path in REQUIREMENTS.values()
+    (path.parent / f"{path.stem}.in", path) for path in REQUIREMENTS.values()
 ]
 
-SUPPORTED = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.10"]
+SUPPORTED = ["3.8", "3.9", "3.10", "pypy3.10", "3.11", "3.12", "3.13"]
 LATEST = "3.12"
 
+nox.options.default_venv_backend = "uv|virtualenv"
 nox.options.sessions = []
 
 
@@ -145,15 +146,17 @@ def docs_style(session):
 @session(default=False)
 def requirements(session):
     """
-    Update the project's pinned requirements. Commit the result.
+    Update the project's pinned requirements.
+
+    You should commit the result afterwards.
     """
-    session.install("pip-tools")
-    for each in REQUIREMENTS_IN:
-        session.run(
-            "pip-compile",
-            "--resolver",
-            "backtracking",
-            "--strip-extras",
-            "-U",
-            each.relative_to(ROOT),
-        )
+    if session.venv_backend == "uv":
+        cmd = ["uv", "pip", "compile"]
+    else:
+        session.install("pip-tools")
+        cmd = ["pip-compile", "--resolver", "backtracking", "--strip-extras"]
+
+    for each, out in REQUIREMENTS_IN:
+        # otherwise output files end up with silly absolute path comments...
+        relative = each.relative_to(ROOT)
+        session.run(*cmd, "--upgrade", "--output-file", out, relative)
