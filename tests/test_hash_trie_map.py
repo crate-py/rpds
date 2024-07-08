@@ -337,6 +337,24 @@ def test_more_eq():
     assert HashTrieMap([]) != HashTrieMap([(o, 1)])
 
 
+def test_hash():
+    o = object()
+
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(o, o), (1, o)])
+    )
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(1, o), (o, o)])
+    )
+    assert hash(HashTrieMap([(o, "foo")])) == hash(HashTrieMap([(o, "foo")]))
+    assert hash(HashTrieMap()) == hash(HashTrieMap([]))
+
+    assert hash(HashTrieMap({1: 2})) != hash(HashTrieMap({1: 3}))
+    assert hash(HashTrieMap({o: 1})) != hash(HashTrieMap({o: o}))
+    assert hash(HashTrieMap([])) != hash(HashTrieMap([(o, 1)]))
+    assert hash(HashTrieMap({1: 2, 3: 4})) != hash(HashTrieMap({1: 3, 2: 4}))
+
+
 def test_pickle():
     assert pickle.loads(
         pickle.dumps(HashTrieMap([(1, 2), (3, 4)])),

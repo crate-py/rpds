@@ -178,6 +178,30 @@ impl HashTrieMapPy {
         }
     }
 
+    fn __hash__(&self, py: Python) -> PyResult<u64> {
+        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
+
+        let mut hasher = DefaultHasher::new();
+
+        let mut hash_vec = self
+            .inner
+            .iter()
+            .map(|(key, val)| {
+                let key_hash: i64 = hash.call1((key.inner.clone_ref(py),))?.extract()?;
+                let val_hash: i64 = hash.call1((val.clone_ref(py),))?.extract()?;
+                Ok((key_hash, val_hash))
+            })
+            .collect::<PyResult<Vec<(i64, i64)>>>()?;
+
+        hash_vec.sort_unstable(); // Order of elements should not affect hash values (numbers)
+
+        for (key_hash, val_hash) in hash_vec {
+            hasher.write_i128(((key_hash as i128) << 64) | (val_hash as i128));
+        }
+
+        Ok(hasher.finish())
+    }
+
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, PyObject)>,)) {
         (
             HashTrieMapPy::type_object_bound(slf.py()),
