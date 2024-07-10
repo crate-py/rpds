@@ -181,58 +181,6 @@ impl HashTrieMapPy {
         }
     }
 
-    fn __hash__(&self, py: Python) -> PyResult<isize> {
-        // modified from https://github.com/python/cpython/blob/d69529d31ccd1510843cfac1ab53bb8cb027541f/Objects/setobject.c#L715
-
-        let mut hash_val = self
-            .inner
-            .iter()
-            .map(|(key, val)| {
-                let mut hasher = DefaultHasher::new();
-
-                let key_hash = key.inner.bind(py).hash().map_err(|_| {
-                    PyTypeError::new_err(format!(
-                        "Unhashable type in map key {}",
-                        key.inner
-                            .bind(py)
-                            .repr()
-                            .map_or("<repr> error".to_string(), |e| {
-                                e.to_str().unwrap().to_string()
-                            })
-                    ))
-                })?;
-
-                let val_hash = val.bind(py).hash().map_err(|_| {
-                    PyTypeError::new_err(format!(
-                        "Unhashable type in map value {}",
-                        key.inner
-                            .bind(py)
-                            .repr()
-                            .map_or("<repr> error".to_string(), |e| {
-                                e.to_str().unwrap().to_string()
-                            })
-                    ))
-                })?;
-
-                hasher.write_isize(key_hash);
-                hasher.write_isize(val_hash);
-
-                Ok(hasher.finish() as usize)
-            })
-            .try_fold(0, |acc: usize, x: PyResult<usize>| {
-                PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
-            })?;
-
-        // facto in the number of entries in the collection
-        hash_val ^= (self.inner.size() + 1) * 1927868237;
-
-        // dispense patterns in the hash value
-        hash_val ^= (hash_val >> 11) ^ (hash_val >> 25);
-        hash_val = hash_val * 69069 + 907133923;
-
-        Ok(hash_val as isize)
-    }
-
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, PyObject)>,)) {
         (
             HashTrieMapPy::type_object_bound(slf.py()),
