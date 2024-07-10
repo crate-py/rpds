@@ -1,7 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-use pyo3::exceptions::PyIndexError;
+use pyo3::exceptions::{PyIndexError, PyTypeError};
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping, types::PyTupleMethods};
@@ -9,6 +6,12 @@ use pyo3::{prelude::*, AsPyPointer, PyTypeInfo};
 use rpds::{
     HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync, Queue, QueueSync,
 };
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
+fn hash_shuffle_bits(h: usize) -> usize {
+    ((h ^ 89869747) ^ (h << 16)) * 3644798167
+}
 
 #[derive(Debug)]
 struct Key {
@@ -178,28 +181,56 @@ impl HashTrieMapPy {
         }
     }
 
-    fn __hash__(&self, py: Python) -> PyResult<u64> {
-        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
+    fn __hash__(&self, py: Python) -> PyResult<isize> {
+        // modified from https://github.com/python/cpython/blob/d69529d31ccd1510843cfac1ab53bb8cb027541f/Objects/setobject.c#L715
 
-        let mut hasher = DefaultHasher::new();
-
-        let mut hash_vec = self
+        let mut hash_val = self
             .inner
             .iter()
             .map(|(key, val)| {
-                let key_hash: i64 = hash.call1((key.inner.clone_ref(py),))?.extract()?;
-                let val_hash: i64 = hash.call1((val.clone_ref(py),))?.extract()?;
-                Ok((key_hash, val_hash))
+                let mut hasher = DefaultHasher::new();
+
+                let key_hash = key.inner.bind(py).hash().map_err(|_| {
+                    PyTypeError::new_err(format!(
+                        "Unhashable type in map key {}",
+                        key.inner
+                            .bind(py)
+                            .repr()
+                            .map_or("<repr> error".to_string(), |e| {
+                                e.to_str().unwrap().to_string()
+                            })
+                    ))
+                })?;
+
+                let val_hash = val.bind(py).hash().map_err(|_| {
+                    PyTypeError::new_err(format!(
+                        "Unhashable type in map value {}",
+                        key.inner
+                            .bind(py)
+                            .repr()
+                            .map_or("<repr> error".to_string(), |e| {
+                                e.to_str().unwrap().to_string()
+                            })
+                    ))
+                })?;
+
+                hasher.write_isize(key_hash);
+                hasher.write_isize(val_hash);
+
+                Ok(hasher.finish() as usize)
             })
-            .collect::<PyResult<Vec<(i64, i64)>>>()?;
+            .try_fold(0, |acc: usize, x: PyResult<usize>| {
+                PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
+            })?;
 
-        hash_vec.sort_unstable(); // Order of identical elements should not affect hash values (numbers)
+        // facto in the number of entries in the collection
+        hash_val ^= (self.inner.size() + 1) * 1927868237;
 
-        for (key_hash, val_hash) in hash_vec {
-            hasher.write_i128(((key_hash as i128) << 64) | (val_hash as i128));
-        }
+        // dispense patterns in the hash value
+        hash_val ^= (hash_val >> 11) ^ (hash_val >> 25);
+        hash_val = hash_val * 69069 + 907133923;
 
-        Ok(hasher.finish())
+        Ok(hash_val as isize)
     }
 
     fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, PyObject)>,)) {
@@ -799,27 +830,38 @@ impl HashTrieSetPy {
         Ok(true)
     }
 
-    fn __hash__(&self, py: Python) -> PyResult<u64> {
-        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
+    fn __hash__(&self, py: Python) -> PyResult<isize> {
+        // modified from https://github.com/python/cpython/blob/d69529d31ccd1510843cfac1ab53bb8cb027541f/Objects/setobject.c#L715
 
-        let mut hasher = DefaultHasher::new();
-
-        let mut hash_vec = self
+        let mut hash_val = self
             .inner
             .iter()
             .map(|k| {
-                let hash_val: i64 = hash.call1((k.inner.clone_ref(py),))?.extract()?;
-                Ok(hash_val)
+                let hash_val = k.inner.bind(py).hash().map_err(|_| {
+                    PyTypeError::new_err(format!(
+                        "Unhashable type in set {}",
+                        k.inner
+                            .bind(py)
+                            .repr()
+                            .map_or("<repr> error".to_string(), |e| {
+                                e.to_str().unwrap().to_string()
+                            })
+                    ))
+                })?;
+                Ok(hash_val as usize)
             })
-            .collect::<PyResult<Vec<i64>>>()?;
+            .try_fold(0, |acc: usize, x: PyResult<usize>| {
+                PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
+            })?;
 
-        hash_vec.sort_unstable(); // Order of identical elements should not affect hash values (numbers)
+        // facto in the number of entries in the collection
+        hash_val ^= (self.inner.size() + 1) * 1927868237;
 
-        for hash_val in hash_vec {
-            hasher.write_i64(hash_val);
-        }
+        // dispense patterns in the hash value
+        hash_val ^= (hash_val >> 11) ^ (hash_val >> 25);
+        hash_val = hash_val * 69069 + 907133923;
 
-        Ok(hasher.finish())
+        Ok(hash_val as isize)
     }
 
     fn __lt__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -1084,12 +1126,29 @@ impl ListPy {
     }
 
     fn __hash__(&self, py: Python) -> PyResult<u64> {
-        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
         let mut hasher = DefaultHasher::new();
-        for each in &self.inner {
-            let n: i64 = hash.call1((each.clone_ref(py),))?.extract()?;
-            hasher.write_i64(n);
-        }
+
+        self.inner
+            .iter()
+            .enumerate()
+            .map(|(index, each)| {
+                each.bind(py)
+                    .hash()
+                    .map_err(|_| {
+                        PyTypeError::new_err(format!(
+                            "Unhashable type at {} element in List: {}",
+                            index,
+                            each.bind(py)
+                                .repr()
+                                .map_or("<repr> error".to_string(), |e| {
+                                    e.to_str().unwrap().to_string()
+                                })
+                        ))
+                    })
+                    .map(|x| hasher.write_isize(x))
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
         Ok(hasher.finish())
     }
 
@@ -1235,12 +1294,29 @@ impl QueuePy {
     }
 
     fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
-        let hash = PyModule::import_bound(py, "builtins")?.getattr("hash")?;
         let mut hasher = DefaultHasher::new();
-        for each in &self.inner {
-            let n: i64 = hash.call1((each.into_py(py),))?.extract()?;
-            hasher.write_i64(n);
-        }
+
+        self.inner
+            .iter()
+            .enumerate()
+            .map(|(index, each)| {
+                each.bind(py)
+                    .hash()
+                    .map_err(|_| {
+                        PyTypeError::new_err(format!(
+                            "Unhashable type at {} element in Queue: {}",
+                            index,
+                            each.bind(py)
+                                .repr()
+                                .map_or("<repr> error".to_string(), |e| {
+                                    e.to_str().unwrap().to_string()
+                                })
+                        ))
+                    })
+                    .map(|x| hasher.write_isize(x))
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
         Ok(hasher.finish())
     }
 
