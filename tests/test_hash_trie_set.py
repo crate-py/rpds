@@ -34,8 +34,6 @@ import pytest
 
 from rpds import HashTrieSet
 
-HASH_MSG = "Not sure HashTrieSet implements Hash, it has mutable methods"
-
 
 def test_key_is_tuple():
     with pytest.raises(KeyError):
@@ -47,9 +45,23 @@ def test_key_is_not_tuple():
         HashTrieSet().remove("asdf")
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
-def test_supports_hash():
-    assert hash(HashTrieSet((1, 2))) == hash(HashTrieSet(1, 2))
+def test_hashing():
+    o = object()
+
+    assert hash(HashTrieSet([o])) == hash(HashTrieSet([o]))
+    assert hash(HashTrieSet([o, o])) == hash(HashTrieSet([o, o]))
+    assert hash(HashTrieSet([])) == hash(HashTrieSet([]))
+    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([1, 2]))
+    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([2, 1]))
+    assert not (HashTrieSet([1, 2]) == HashTrieSet([1, 3]))
+    assert not (HashTrieSet([]) == HashTrieSet([o]))
+
+    assert hash(HashTrieSet([1, 2])) != hash(HashTrieSet([1, 3]))
+    assert hash(HashTrieSet([1, o])) != hash(HashTrieSet([1, 2]))
+    assert hash(HashTrieSet([1, 2])) != hash(HashTrieSet([2, 1, 3]))
+    assert not (HashTrieSet([o]) != HashTrieSet([o, o]))
+    assert not (HashTrieSet([o, o]) != HashTrieSet([o, o]))
+    assert not (HashTrieSet() != HashTrieSet([]))
 
 
 def test_empty_truthiness():
@@ -179,25 +191,6 @@ def test_more_eq():
     assert HashTrieSet([1, 2]) == {1, 2}
     assert HashTrieSet([1, 2]) != {1, 2, 3}
     assert HashTrieSet([1, 2]) != [1, 2]
-
-
-def test_hash():
-    o = object()
-
-    assert hash(HashTrieSet([o])) == hash(HashTrieSet([o]))
-    assert hash(HashTrieSet([o, o])) == hash(HashTrieSet([o, o]))
-    assert hash(HashTrieSet([])) == hash(HashTrieSet([]))
-    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([1, 2]))
-    assert hash(HashTrieSet([1, 2])) == hash(HashTrieSet([2, 1]))
-    assert not (HashTrieSet([1, 2]) == HashTrieSet([1, 3]))
-    assert not (HashTrieSet([]) == HashTrieSet([o]))
-
-    assert hash(HashTrieSet([1, 2])) != hash(HashTrieSet([1, 3]))
-    assert hash(HashTrieSet([1, o])) != hash(HashTrieSet([1, 2]))
-    assert hash(HashTrieSet([1, 2])) != hash(HashTrieSet([2, 1, 3]))
-    assert not (HashTrieSet([o]) != HashTrieSet([o, o]))
-    assert not (HashTrieSet([o, o]) != HashTrieSet([o, o]))
-    assert not (HashTrieSet() != HashTrieSet([]))
 
 
 def test_more_set_comparisons():

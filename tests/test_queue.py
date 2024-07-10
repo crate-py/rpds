@@ -31,8 +31,6 @@ import pytest
 
 from rpds import Queue
 
-HASH_MSG = "Not sure Queue implements Hash, it has mutable methods"
-
 
 def test_literalish_works():
     assert Queue(1, 2, 3) == Queue([1, 2, 3])

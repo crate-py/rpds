@@ -33,8 +33,6 @@ import pytest
 
 from rpds import List
 
-HASH_MSG = "Not sure List implements Hash, it has mutable methods"
-
 
 def test_literalish_works():
     assert List(1, 2, 3) == List([1, 2, 3])
@@ -100,10 +98,24 @@ def test_repr():
     assert str(List([1, 2, 3])) in "List([1, 2, 3])"
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_hashing():
-    assert hash(List([1, 2])) == hash(List([1, 2]))
-    assert hash(List([1, 2])) != hash(List([2, 1]))
+    o = object()
+
+    assert hash(List([o, o])) == hash(List([o, o]))
+    assert hash(List([o])) == hash(List([o]))
+    assert hash(List()) == hash(List([]))
+    assert not (hash(List([1, 2])) == hash(List([1, 3])))
+    assert not (hash(List[1, 2]) == hash(List[2, 1]))
+    assert not (hash(List([o])) == hash(List([o, o])))
+    assert not (hash(List([])) == hash(List([o])))
+
+    assert hash(List([1, 2])) != hash(List([1, 3]))
+    assert hash(List[1, 2]) != hash(List[2, 1])
+    assert hash(List([o])) != hash(List([o, o]))
+    assert hash(List([])) != hash(List([o]))
+    assert not (hash(List([o, o])) != hash(List([o, o])))
+    assert not (hash(List([o])) != hash(List([o])))
+    assert not (hash(List([])) != hash(List([])))
 
 
 def test_sequence():
@@ -142,24 +154,6 @@ def test_more_eq():
     assert not (List([o, o]) != List([o, o]))
     assert not (List([o]) != List([o]))
     assert not (List() != List([]))
-
-
-def test_hash():
-    o = object()
-
-    assert hash(List([o, o])) == hash(List([o, o]))
-    assert hash(List([o])) == hash(List([o]))
-    assert hash(List()) == hash(List([]))
-    assert not (hash(List([1, 2])) == hash(List([1, 3])))
-    assert not (hash(List([o])) == hash(List([o, o])))
-    assert not (hash(List([])) == hash(List([o])))
-
-    assert hash(List([1, 2])) != hash(List([1, 3]))
-    assert hash(List([o])) != hash(List([o, o]))
-    assert hash(List([])) != hash(List([o]))
-    assert not (hash(List([o, o])) != hash(List([o, o])))
-    assert not (hash(List([o])) != hash(List([o])))
-    assert not (hash(List([])) != hash(List([])))
 
 
 def test_pickle():
