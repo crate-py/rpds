@@ -154,12 +154,22 @@ def test_overwrite_existing_element():
     assert map2["a"] == 3
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
-def test_hash():
-    x = HashTrieMap(a=1, b=2, c=3)
-    y = HashTrieMap(a=1, b=2, c=3)
+def test_hashing():
+    o = object()
 
-    assert hash(x) == hash(y)
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(o, o), (1, o)]),
+    )
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(1, o), (o, o)]),
+    )
+    assert hash(HashTrieMap([(o, "foo")])) == hash(HashTrieMap([(o, "foo")]))
+    assert hash(HashTrieMap()) == hash(HashTrieMap([]))
+
+    assert hash(HashTrieMap({1: 2})) != hash(HashTrieMap({1: 3}))
+    assert hash(HashTrieMap({o: 1})) != hash(HashTrieMap({o: o}))
+    assert hash(HashTrieMap([])) != hash(HashTrieMap([(o, 1)]))
+    assert hash(HashTrieMap({1: 2, 3: 4})) != hash(HashTrieMap({1: 3, 2: 4}))
 
 
 def test_same_hash_when_content_the_same_but_underlying_vector_size_differs():
