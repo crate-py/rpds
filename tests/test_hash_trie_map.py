@@ -35,10 +35,7 @@ import pytest
 
 from rpds import HashTrieMap
 
-HASH_MSG = "Not sure HashTrieMap implements Hash, it has mutable methods"
 
-
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_instance_of_hashable():
     assert isinstance(HashTrieMap(), abc.Hashable)
 
@@ -193,13 +190,17 @@ class HashabilityControlled:
         raise ValueError("I am not currently hashable.")
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_map_does_not_hash_values_on_second_hash_invocation():
     hashable = HashabilityControlled()
     x = HashTrieMap(dict(el=hashable))
     hash(x)
-    hashable.hashable = False
-    hash(x)
+
+    with pytest.raises(
+        TypeError,
+        match=r"Unhashable type in HashTrieMap of key 'el'",
+    ):
+        hashable.hashable = False
+        hash(x)
 
 
 def test_equal():
