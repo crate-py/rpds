@@ -195,11 +195,11 @@ def test_map_does_not_hash_values_on_second_hash_invocation():
     x = HashTrieMap(dict(el=hashable))
     hash(x)
 
+    hashable.hashable = False
     with pytest.raises(
         TypeError,
         match=r"Unhashable type in HashTrieMap of key 'el'",
     ):
-        hashable.hashable = False
         hash(x)
 
 
