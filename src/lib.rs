@@ -198,12 +198,12 @@ impl HashTrieMapPy {
                         key.inner
                             .bind(py)
                             .repr()
-                            .map_or("<repr> error".to_string(), |e| {
-                                e.to_str().unwrap().to_string()
-                            }),
-                        val_bound.repr().map_or("<repr> error".to_string(), |e| {
-                            e.to_str().unwrap().to_string()
-                        })
+                            .and_then(|r| r.extract())
+                            .unwrap_or("<repr> error".to_string()),
+                        val_bound
+                            .repr()
+                            .and_then(|r| r.extract())
+                            .unwrap_or("<repr> error".to_string())
                     ))
                 })?;
 
@@ -829,10 +829,8 @@ impl HashTrieSetPy {
         let mut hash_val = self
             .inner
             .iter()
-            .map(|k| Ok(k.hash as usize))
-            .try_fold(0, |acc: usize, x: PyResult<usize>| {
-                PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
-            })?;
+            .map(|k| k.hash as usize)
+            .fold(0, |acc: usize, x: usize| acc ^ hash_shuffle_bits(x));
 
         // facto in the number of entries in the collection
         hash_val ^= (self.inner.size() + 1) * 1927868237;
@@ -1111,7 +1109,7 @@ impl ListPy {
         self.inner
             .iter()
             .enumerate()
-            .map(|(index, each)| {
+            .try_for_each(|(index, each)| {
                 each.bind(py)
                     .hash()
                     .map_err(|_| {
@@ -1120,14 +1118,12 @@ impl ListPy {
                             index,
                             each.bind(py)
                                 .repr()
-                                .map_or("<repr> error".to_string(), |e| {
-                                    e.to_str().unwrap().to_string()
-                                })
+                                .and_then(|r| r.extract())
+                                .unwrap_or("<repr> error".to_string())
                         ))
                     })
                     .map(|x| hasher.write_isize(x))
-            })
-            .collect::<PyResult<Vec<_>>>()?;
+            })?;
 
         Ok(hasher.finish())
     }
@@ -1279,7 +1275,7 @@ impl QueuePy {
         self.inner
             .iter()
             .enumerate()
-            .map(|(index, each)| {
+            .try_for_each(|(index, each)| {
                 each.bind(py)
                     .hash()
                     .map_err(|_| {
@@ -1288,14 +1284,12 @@ impl QueuePy {
                             index,
                             each.bind(py)
                                 .repr()
-                                .map_or("<repr> error".to_string(), |e| {
-                                    e.to_str().unwrap().to_string()
-                                })
+                                .and_then(|r| r.extract())
+                                .unwrap_or("<repr> error".to_string())
                         ))
                     })
                     .map(|x| hasher.write_isize(x))
-            })
-            .collect::<PyResult<Vec<_>>>()?;
+            })?;
 
         Ok(hasher.finish())
     }
