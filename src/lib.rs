@@ -823,26 +823,13 @@ impl HashTrieSetPy {
         Ok(true)
     }
 
-    fn __hash__(&self, py: Python) -> PyResult<isize> {
+    fn __hash__(&self) -> PyResult<isize> {
         // modified from https://github.com/python/cpython/blob/d69529d31ccd1510843cfac1ab53bb8cb027541f/Objects/setobject.c#L715
 
         let mut hash_val = self
             .inner
             .iter()
-            .map(|k| {
-                let hash_val = k.inner.bind(py).hash().map_err(|_| {
-                    PyTypeError::new_err(format!(
-                        "Unhashable type in set {}",
-                        k.inner
-                            .bind(py)
-                            .repr()
-                            .map_or("<repr> error".to_string(), |e| {
-                                e.to_str().unwrap().to_string()
-                            })
-                    ))
-                })?;
-                Ok(hash_val as usize)
-            })
+            .map(|k| Ok(k.hash as usize))
             .try_fold(0, |acc: usize, x: PyResult<usize>| {
                 PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
             })?;
