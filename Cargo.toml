@@ -13,4 +13,6 @@ archery = "1.2.0"
 
 [dependencies.pyo3]
 version = "0.22.2"
-features = ["extension-module"]
+# To build extension for PyPy on Windows, "generate-import-lib" is needed:
+# https://github.com/PyO3/maturin-action/issues/267#issuecomment-2106844429
+features = ["extension-module", "generate-import-lib"]
