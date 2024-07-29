@@ -60,7 +60,7 @@ jobs:
             pypy3.10
           allow-prereleases: true
       - name: Set up uv
-        uses: hynek/setup-cached-uv@v1
+        uses: hynek/setup-cached-uv@v2
       - name: Set up nox
         uses: wntrblm/nox@2024.04.15
 
