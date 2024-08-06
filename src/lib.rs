@@ -216,7 +216,7 @@ impl HashTrieMapPy {
                 PyResult::<usize>::Ok(acc ^ hash_shuffle_bits(x?))
             })?;
 
-        // facto in the number of entries in the collection
+        // factor in the number of entries in the collection
         hash_val ^= (self.inner.size() + 1) * 1927868237;
 
         // dispense patterns in the hash value
@@ -832,7 +832,7 @@ impl HashTrieSetPy {
             .map(|k| k.hash as usize)
             .fold(0, |acc: usize, x: usize| acc ^ hash_shuffle_bits(x));
 
-        // facto in the number of entries in the collection
+        // factor in the number of entries in the collection
         hash_val ^= (self.inner.size() + 1) * 1927868237;
 
         // dispense patterns in the hash value
