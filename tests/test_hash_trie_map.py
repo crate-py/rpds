@@ -35,10 +35,7 @@ import pytest
 
 from rpds import HashTrieMap
 
-HASH_MSG = "Not sure HashTrieMap implements Hash, it has mutable methods"
 
-
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_instance_of_hashable():
     assert isinstance(HashTrieMap(), abc.Hashable)
 
@@ -154,12 +151,22 @@ def test_overwrite_existing_element():
     assert map2["a"] == 3
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
-def test_hash():
-    x = HashTrieMap(a=1, b=2, c=3)
-    y = HashTrieMap(a=1, b=2, c=3)
+def test_hashing():
+    o = object()
 
-    assert hash(x) == hash(y)
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(o, o), (1, o)]),
+    )
+    assert hash(HashTrieMap([(o, o), (1, o)])) == hash(
+        HashTrieMap([(1, o), (o, o)]),
+    )
+    assert hash(HashTrieMap([(o, "foo")])) == hash(HashTrieMap([(o, "foo")]))
+    assert hash(HashTrieMap()) == hash(HashTrieMap([]))
+
+    assert hash(HashTrieMap({1: 2})) != hash(HashTrieMap({1: 3}))
+    assert hash(HashTrieMap({o: 1})) != hash(HashTrieMap({o: o}))
+    assert hash(HashTrieMap([])) != hash(HashTrieMap([(o, 1)]))
+    assert hash(HashTrieMap({1: 2, 3: 4})) != hash(HashTrieMap({1: 3, 2: 4}))
 
 
 def test_same_hash_when_content_the_same_but_underlying_vector_size_differs():
@@ -183,13 +190,17 @@ class HashabilityControlled:
         raise ValueError("I am not currently hashable.")
 
 
-@pytest.mark.xfail(reason=HASH_MSG)
 def test_map_does_not_hash_values_on_second_hash_invocation():
     hashable = HashabilityControlled()
     x = HashTrieMap(dict(el=hashable))
     hash(x)
+
     hashable.hashable = False
-    hash(x)
+    with pytest.raises(
+        TypeError,
+        match=r"Unhashable type in HashTrieMap of key 'el'",
+    ):
+        hash(x)
 
 
 def test_equal():
