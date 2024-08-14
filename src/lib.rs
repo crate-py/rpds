@@ -10,7 +10,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 fn hash_shuffle_bits(h: usize) -> usize {
-    ((h ^ 89869747) ^ (h << 16)) * 3644798167
+    ((h ^ 89869747) ^ (h << 16)).wrapping_mul(3644798167)
 }
 
 #[derive(Debug)]
@@ -217,11 +217,11 @@ impl HashTrieMapPy {
             })?;
 
         // factor in the number of entries in the collection
-        hash_val ^= (self.inner.size() + 1) * 1927868237;
+        hash_val ^= self.inner.size().wrapping_add(1).wrapping_mul(1927868237);
 
         // dispense patterns in the hash value
         hash_val ^= (hash_val >> 11) ^ (hash_val >> 25);
-        hash_val = hash_val * 69069 + 907133923;
+        hash_val = hash_val.wrapping_mul(69069).wrapping_add(907133923);
 
         Ok(hash_val as isize)
     }
@@ -833,11 +833,11 @@ impl HashTrieSetPy {
             .fold(0, |acc: usize, x: usize| acc ^ hash_shuffle_bits(x));
 
         // factor in the number of entries in the collection
-        hash_val ^= (self.inner.size() + 1) * 1927868237;
+        hash_val ^= self.inner.size().wrapping_add(1).wrapping_mul(1927868237);
 
         // dispense patterns in the hash value
         hash_val ^= (hash_val >> 11) ^ (hash_val >> 25);
-        hash_val = hash_val * 69069 + 907133923;
+        hash_val = hash_val.wrapping_mul(69069).wrapping_add(907133923);
 
         Ok(hash_val as isize)
     }
