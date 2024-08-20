@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rpds = "1.1.0"
-archery = "1.2.0"
+archery = "1.2.1"
 
 [dependencies.pyo3]
 version = "0.22.2"
