@@ -12,7 +12,7 @@ rpds = "1.1.0"
 archery = "1.2.1"
 
 [dependencies.pyo3]
-version = "0.22.3"
+version = "0.22.4"
 # To build extension for PyPy on Windows, "generate-import-lib" is needed:
 # https://github.com/PyO3/maturin-action/issues/267#issuecomment-2106844429
 features = ["extension-module", "generate-import-lib"]
