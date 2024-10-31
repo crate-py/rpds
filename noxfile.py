@@ -38,7 +38,18 @@ def tests(session):
     """
     Run the test suite with a corresponding Python version.
     """
-    session.install("-r", REQUIREMENTS["tests"])
+    # Really we want --profile=test here (for
+    # https://github.com/crate-py/rpds/pull/87#issuecomment-2291409297)
+    # but it produces strange symbol errors saying:
+    #   dynamic module does not define module export function (PyInit_rpds)
+    # so OK, dev it is.
+    session.install(
+        "--config-settings",
+        "build-args=--profile=dev",
+        "--no-cache",
+        "-r",
+        REQUIREMENTS["tests"],
+    )
 
     if session.posargs and session.posargs[0] == "coverage":
         if len(session.posargs) > 1 and session.posargs[1] == "github":
