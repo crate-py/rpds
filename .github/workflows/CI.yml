@@ -58,6 +58,7 @@ jobs:
             pypy3.9
             pypy3.10
           allow-prereleases: true
+
       - name: Set up uv
         uses: hynek/setup-cached-uv@v2
       - name: Set up nox

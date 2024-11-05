@@ -7,7 +7,6 @@ name = "rpds-py"
 description = "Python bindings to Rust's persistent data structures (rpds)"
 requires-python = ">=3.9"
 readme = "README.rst"
-license = {text = "MIT"}
 keywords = ["data structures", "rust", "persistent"]
 authors = [
   { name = "Julian Berman", email = "Julian+rpds@GrayVines.com" },
