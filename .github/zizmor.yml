@@ -1,0 +1,5 @@
+rules:
+  template-injection:
+    ignore:
+      # our matrix is dynamically generated via `nox -l` but with no user input
+      - CI.yml:71:9

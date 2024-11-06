@@ -21,6 +21,8 @@ jobs:
       noxenvs: ${{ steps.noxenvs-matrix.outputs.noxenvs }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Set up nox
         uses: wntrblm/nox@2024.10.09
       - id: noxenvs-matrix
@@ -40,6 +42,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libenchant-2-dev
         if: runner.os == 'Linux' && startsWith(matrix.noxenv, 'docs')
@@ -75,6 +79,8 @@ jobs:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -110,6 +116,8 @@ jobs:
           - x86_64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -142,6 +150,8 @@ jobs:
         target: [x64, x86] # x86 is not supported by pypy
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -174,6 +184,8 @@ jobs:
         target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -202,6 +214,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: |
