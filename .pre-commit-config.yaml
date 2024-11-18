@@ -3,6 +3,7 @@ ci:
     # pre-commit.ci doesn't have Rust installed
     - fmt
     - clippy
+    - zizmor
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
