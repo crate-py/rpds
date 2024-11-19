@@ -72,7 +72,7 @@ def tests(session):
                     stdout=summary,
                 )
     else:
-        session.run("pytest", *session.posargs, TESTS)
+        session.run("pytest", "--parallel-threads=10", *session.posargs, TESTS)
 
 
 @session()

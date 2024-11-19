@@ -1385,7 +1385,7 @@ impl QueuePy {
     }
 }
 
-#[pymodule]
+#[pymodule(gil_used = false)]
 #[pyo3(name = "rpds")]
 fn rpds_py(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<HashTrieMapPy>()?;
