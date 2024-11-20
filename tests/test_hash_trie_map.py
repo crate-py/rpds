@@ -30,10 +30,21 @@ Pre-modification, these were MIT licensed, and are copyright:
 from collections import abc
 from operator import methodcaller
 import pickle
+import sysconfig
 
 import pytest
 
 from rpds import HashTrieMap
+
+# see https://github.com/python/cpython/issues/127065,
+# remove this when the CPython bug is fixed in a released version
+if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+
+    def methodcaller(name, /, *args, **kwargs):
+        def caller(obj):
+            return getattr(obj, name)(*args, **kwargs)
+
+        return caller
 
 
 def test_instance_of_hashable():
