@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: quansight-labs/setup-python@v5
         with:
           python-version: |
             3.9
@@ -88,6 +88,7 @@ jobs:
             3.11
             3.12
             3.13
+            3.13t
             pypy3.9
             pypy3.10
           allow-prereleases: true
@@ -95,7 +96,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
           sccache: "true"
           manylinux: auto
       - name: Upload wheels
@@ -117,7 +118,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: quansight-labs/setup-python@v5
         with:
           python-version: |
             3.9
@@ -125,6 +126,7 @@ jobs:
             3.11
             3.12
             3.13
+            3.13t
             pypy3.9
             pypy3.10
           allow-prereleases: true
@@ -132,7 +134,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
           manylinux: musllinux_1_2
           sccache: "true"
       - name: Upload wheels
@@ -151,7 +153,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: quansight-labs/setup-python@v5
         with:
           python-version: |
             3.9
@@ -159,6 +161,7 @@ jobs:
             3.11
             3.12
             3.13
+            3.13t
             ${{ matrix.target == 'x64' && 'pypy3.9' || '' }}
             ${{ matrix.target == 'x64' && 'pypy3.10' || '' }}
           allow-prereleases: true
@@ -167,7 +170,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
           sccache: "true"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -185,7 +188,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: quansight-labs/setup-python@v5
         with:
           python-version: |
             3.9
@@ -193,6 +196,7 @@ jobs:
             3.11
             3.12
             3.13
+            3.13t
             pypy3.9
             pypy3.10
           allow-prereleases: true
@@ -200,7 +204,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
           sccache: "true"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -217,15 +221,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: |
-            3.9
-            3.10
-            3.11
-            3.12
-            3.13
-            pypy3.9
-            pypy3.10
-          allow-prereleases: true
+          python-version: 3.13
       - name: Build an sdist
         uses: PyO3/maturin-action@v1
         with:
