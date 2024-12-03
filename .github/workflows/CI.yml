@@ -161,7 +161,6 @@ jobs:
             3.11
             3.12
             3.13
-            3.13t
             ${{ matrix.target == 'x64' && 'pypy3.9' || '' }}
             ${{ matrix.target == 'x64' && 'pypy3.10' || '' }}
           allow-prereleases: true
@@ -170,12 +169,39 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
           sccache: "true"
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
+          path: dist
+
+  windows-free-threaded:
+    needs: test
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86] # x86 is not supported by pypy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: quansight-labs/setup-python@v5
+        with:
+          python-version: 3.13t
+          allow-prereleases: true
+          architecture: ${{ matrix.target }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --interpreter '3.13t'
+          sccache: "true"
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.job }}-${{ matrix.target }}-free-threaded
           path: dist
 
   macos:
@@ -234,7 +260,7 @@ jobs:
           path: dist
 
   release:
-    needs: [manylinux, musllinux, windows, macos]
+    needs: [manylinux, musllinux, windows, windows-free-threaded, macos]
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     environment:
