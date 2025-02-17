@@ -12,6 +12,8 @@ on:
     - cron: "33 5 * * *"
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   list:
     runs-on: ubuntu-latest
