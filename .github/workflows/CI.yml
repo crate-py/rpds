@@ -63,6 +63,7 @@ jobs:
             3.13t
             pypy3.9
             pypy3.10
+            pypy3.11
           allow-prereleases: true
 
       - uses: astral-sh/setup-uv@v5
@@ -95,12 +96,13 @@ jobs:
             3.13t
             pypy3.9
             pypy3.10
+            pypy3.11
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
           manylinux: auto
       - name: Upload wheels
@@ -136,12 +138,13 @@ jobs:
             3.13t
             pypy3.9
             pypy3.10
+            pypy3.11
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
           manylinux: musllinux_1_2
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
@@ -173,13 +176,14 @@ jobs:
             3.13
             ${{ matrix.target == 'x64' && 'pypy3.9' || '' }}
             ${{ matrix.target == 'x64' && 'pypy3.10' || '' }}
+            ${{ matrix.target == 'x64' && 'pypy3.11' || '' }}
           allow-prereleases: true
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10 pypy3.11' || '' }}
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -243,12 +247,13 @@ jobs:
             3.13t
             pypy3.9
             pypy3.10
+            pypy3.11
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
