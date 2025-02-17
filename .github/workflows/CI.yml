@@ -22,6 +22,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - id: noxenvs-matrix
         run: |
           echo >>$GITHUB_OUTPUT noxenvs=$(
@@ -62,6 +64,8 @@ jobs:
           allow-prereleases: true
 
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Run nox
         run: uvx nox -s "${{ matrix.noxenv }}" -- ${{ matrix.posargs }} # zizmor: ignore[template-injection]
 
@@ -92,7 +96,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
-          sccache: "true"
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
           manylinux: auto
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -131,7 +135,7 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
           manylinux: musllinux_1_2
-          sccache: "true"
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -165,7 +169,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
-          sccache: "true"
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -192,7 +196,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.13t'
-          sccache: "true"
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -226,7 +230,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10'
-          sccache: "true"
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
