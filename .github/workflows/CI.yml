@@ -149,7 +149,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: [x64, x86] # x86 is not supported by pypy
+        target: [x64, x86, aarch64] # x86 is not supported by pypy
     steps:
       - uses: actions/checkout@v4
         with:
