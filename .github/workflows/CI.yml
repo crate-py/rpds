@@ -149,16 +149,16 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: [x64, x86] # x86 is not supported by pypy
+        target: [x64, x86, aarch64] # x86 not supported by PyPy, <3.11 not supported on ARM
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: quansight-labs/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: |
-            3.9
-            3.10
+            ${{ matrix.target != 'aarch64' && '3.9' || '' }}
+            ${{ matrix.target != 'aarch64' && '3.10' || '' }}
             3.11
             3.12
             3.13
