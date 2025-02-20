@@ -7,6 +7,8 @@ name = "rpds-py"
 description = "Python bindings to Rust's persistent data structures (rpds)"
 requires-python = ">=3.9"
 readme = "README.rst"
+license = "MIT"
+license-files = ["COPYING"]
 keywords = ["data structures", "rust", "persistent"]
 authors = [
   { name = "Julian Berman", email = "Julian+rpds@GrayVines.com" },
@@ -14,7 +16,6 @@ authors = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Rust",
   "Programming Language :: Python :: 3.9",
@@ -59,8 +60,8 @@ skip_covered = true
 
 [tool.doc8]
 ignore = [
-    "D000",  # see PyCQA/doc8#125
-    "D001",  # one sentence per line, so max length doesn't make sense
+  "D000",  # see PyCQA/doc8#125
+  "D001",  # one sentence per line, so max length doesn't make sense
 ]
 
 [tool.maturin]
@@ -83,6 +84,7 @@ ignore = [
   "A001",  # It's fine to shadow builtins
   "A002",
   "A003",
+  "A005",
   "ARG",  # This is all wrong whenever an interface is involved
   "ANN",  # Just let the type checker do this
   "B006",  # Mutable arguments require care but are OK if you don't abuse them
