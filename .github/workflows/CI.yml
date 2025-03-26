@@ -74,9 +74,12 @@ jobs:
   manylinux:
     needs: test
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
         target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,12 +112,15 @@ jobs:
   musllinux:
     needs: test
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
         target:
           - aarch64-unknown-linux-musl
           - i686-unknown-linux-musl
           - x86_64-unknown-linux-musl
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,9 +153,12 @@ jobs:
   windows:
     needs: test
     runs-on: windows-latest
+
     strategy:
+      fail-fast: false
       matrix:
         target: [x64, x86] # x86 is not supported by pypy
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -183,9 +192,12 @@ jobs:
   windows-free-threaded:
     needs: test
     runs-on: windows-latest
+
     strategy:
+      fail-fast: false
       matrix:
         target: [x64, x86] # x86 is not supported by pypy
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -210,9 +222,12 @@ jobs:
   macos:
     needs: test
     runs-on: macos-latest
+
     strategy:
+      fail-fast: false
       matrix:
         target: [x86_64, aarch64]
+
     steps:
       - uses: actions/checkout@v4
         with:
