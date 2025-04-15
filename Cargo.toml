@@ -8,7 +8,7 @@ name = "rpds"
 crate-type = ["cdylib"]
 
 [dependencies]
-rpds = "1.1.0"
+rpds = "1.1.1"
 archery = "1.2.1"
 
 [dependencies.pyo3]
