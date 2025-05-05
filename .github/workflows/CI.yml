@@ -190,6 +190,59 @@ jobs:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
 
+  windows-arm:
+    needs: test
+    runs-on: windows-11-arm
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target: 
+          - aarch64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Install each python version seperatly so that the paths can be passed to maturin
+      # to prevent it from finding the x64 pythons pre-installed on the runner instead.
+      - uses: actions/setup-python@v5
+        id: cp311
+        with:
+          python-version: 3.11
+          allow-prereleases: true
+          architecture: arm64
+      - uses: actions/setup-python@v5
+        id: cp312
+        with:
+          python-version: 3.12
+          allow-prereleases: true
+          architecture: arm64
+      - uses: actions/setup-python@v5
+        id: cp313
+        with:
+          python-version: 3.13
+          allow-prereleases: true
+          architecture: arm64
+      # rust toolchain is not currently installed on windopws arm64 images https://github.com/actions/partner-runner-images/issues/77
+      - name: Setup rust
+        id: setup-rust
+        run: |
+            Invoke-WebRequest https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe -OutFile .\rustup-init.exe
+            .\rustup-init.exe -y
+            Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.cargo\bin"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --interpreter ${{ steps.cp311.outputs.python-path }} ${{ steps.cp312.outputs.python-path }} ${{ steps.cp313.outputs.python-path }}
+          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.job }}-${{ matrix.target }}
+          path: dist
+
   # free-threaded and normal builds share a site-packages folder on Windows so
   # we must build free-threaded separately
   windows-free-threaded:
