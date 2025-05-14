@@ -197,7 +197,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: 
+        target:
           - aarch64-pc-windows-msvc
 
     steps:
