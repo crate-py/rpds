@@ -2,7 +2,7 @@ use pyo3::exceptions::{PyIndexError, PyTypeError};
 use pyo3::pyclass::CompareOp;
 use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping, types::PyTupleMethods};
-use pyo3::{prelude::*, AsPyPointer, BoundObject, PyTypeInfo};
+use pyo3::{prelude::*, BoundObject, PyTypeInfo};
 use rpds::{
     HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync, Queue, QueueSync,
 };
@@ -64,12 +64,6 @@ impl Key {
             hash: self.hash,
             inner: self.inner.clone_ref(py),
         }
-    }
-}
-
-unsafe impl AsPyPointer for Key {
-    fn as_ptr(&self) -> *mut pyo3::ffi::PyObject {
-        self.inner.as_ptr()
     }
 }
 
