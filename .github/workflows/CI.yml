@@ -334,7 +334,7 @@ jobs:
           path: dist
 
   release:
-    needs: 
+    needs:
       [manylinux, musllinux, windows, windows-arm, windows-free-threaded, macos]
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
