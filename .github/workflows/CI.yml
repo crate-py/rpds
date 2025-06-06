@@ -61,6 +61,8 @@ jobs:
             3.12
             3.13
             3.13t
+            3.14
+            3.14t
             pypy3.9
             pypy3.10
             pypy3.11
@@ -94,6 +96,8 @@ jobs:
             3.12
             3.13
             3.13t
+            3.14
+            3.14t
             pypy3.9
             pypy3.10
             pypy3.11
@@ -102,7 +106,7 @@ jobs:
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.9 pypy3.10 pypy3.11'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
           manylinux: auto
       - name: Upload wheels
@@ -136,6 +140,8 @@ jobs:
             3.12
             3.13
             3.13t
+            3.14
+            3.14t
             pypy3.9
             pypy3.10
             pypy3.11
@@ -144,7 +150,7 @@ jobs:
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.9 pypy3.10 pypy3.11'
           manylinux: musllinux_1_2
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
@@ -174,6 +180,7 @@ jobs:
             3.11
             3.12
             3.13
+            3.14
             ${{ matrix.target == 'x64' && 'pypy3.9' || '' }}
             ${{ matrix.target == 'x64' && 'pypy3.10' || '' }}
           allow-prereleases: true
@@ -182,7 +189,7 @@ jobs:
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.14' --interpreter ${{ matrix.target == 'x64' && 'pypy3.9 pypy3.10' || '' }}
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -223,6 +230,12 @@ jobs:
           python-version: 3.13
           allow-prereleases: true
           architecture: arm64
+      - uses: actions/setup-python@v5
+        id: cp314
+        with:
+          python-version: 3.14
+          allow-prereleases: true
+          architecture: arm64
       # rust toolchain is not currently installed on windopws arm64 images: https://github.com/actions/partner-runner-images/issues/77
       - name: Setup rust
         id: setup-rust
@@ -234,7 +247,7 @@ jobs:
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter ${{ steps.cp311.outputs.python-path }} ${{ steps.cp312.outputs.python-path }} ${{ steps.cp313.outputs.python-path }}
+          args: --release --out dist --interpreter ${{ steps.cp311.outputs.python-path }} ${{ steps.cp312.outputs.python-path }} ${{ steps.cp313.outputs.python-path }} ${{ steps.cp314.outputs.python-path }}
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -259,14 +272,16 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.13t
+          python-version: |
+            3.13t
+            3.14t
           allow-prereleases: true
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.13t'
+          args: --release --out dist --interpreter '3.13t 3.14t'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -296,6 +311,8 @@ jobs:
             3.12
             3.13
             3.13t
+            3.14
+            3.14t
             pypy3.9
             pypy3.10
             pypy3.11
@@ -304,7 +321,7 @@ jobs:
         uses: PyO3/maturin-action@aef21716ff3dcae8a1c301d23ec3e4446972a6e3 # v1.49.1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t pypy3.9 pypy3.10 pypy3.11'
+          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.9 pypy3.10 pypy3.11'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@v4
