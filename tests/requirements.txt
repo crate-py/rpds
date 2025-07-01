@@ -6,11 +6,13 @@ packaging==25.0
     # via pytest
 pluggy==1.6.0
     # via pytest
-pytest==8.3.5
+pygments==2.19.2
+    # via pytest
+pytest==8.4.1
     # via
     #   -r tests/requirements.in
     #   pytest-run-parallel
-pytest-run-parallel==0.4.2
+pytest-run-parallel==0.4.4
     # via -r tests/requirements.in
 rpds-py @ file:.#egg=rpds-py
     # via -r tests/requirements.in
