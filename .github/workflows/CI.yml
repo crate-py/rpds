@@ -103,7 +103,7 @@ jobs:
             pypy3.11
           allow-prereleases: true
       - name: Build wheels
-        uses: ffgan/maturin-action@910dbe8175fd9ceb6f8b218cfb719213cf23a2a2 # v1.49.3
+        uses: ffgan/maturin-action@d94f64f81b4746a9dd73da3181f7f4b61968e8b9 # v1.49.3
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.9 pypy3.10 pypy3.11'
