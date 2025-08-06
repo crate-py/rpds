@@ -81,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le, riscv64gc-unknown-linux-gnu]
 
     steps:
       - uses: actions/checkout@v4
@@ -115,46 +115,6 @@ jobs:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
 
-  manylinux-riscv64:
-    needs: test
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [riscv64gc-unknown-linux-gnu]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: |
-            3.9
-            3.10
-            3.11
-            3.12
-            3.13
-            3.13t
-            3.14
-            3.14t
-            pypy3.9
-            pypy3.10
-            pypy3.11
-          allow-prereleases: true
-      - name: Build wheels
-        uses: ffgan/maturin-action@542101dd78ba7e859666722008d1e6e9a0ccabb4
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.9 3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.9 pypy3.10 pypy3.11'
-          sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
-          manylinux: manylinux_2_39
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ github.job }}-${{ matrix.target }}
-          path: dist
 
   musllinux:
     needs: test
