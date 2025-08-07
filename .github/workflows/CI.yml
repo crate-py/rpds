@@ -81,7 +81,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+        target:
+          [
+            x86_64,
+            x86,
+            aarch64,
+            armv7,
+            s390x,
+            ppc64le,
+            riscv64gc-unknown-linux-gnu,
+          ]
 
     steps:
       - uses: actions/checkout@v4
