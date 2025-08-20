@@ -377,10 +377,10 @@ jobs:
           pattern: dist-*
           merge-multiple: true
       - name: Publish to PyPI
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
-          command: upload
-          args: --non-interactive --skip-existing *
+          skip-existing: true
+          print-hash: true
       - name: Create a GitHub Release
         if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
