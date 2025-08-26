@@ -381,6 +381,7 @@ jobs:
         with:
           skip-existing: true
           print-hash: true
+          packages-dir: .
       - name: Create a GitHub Release
         if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
