@@ -376,16 +376,17 @@ jobs:
         with:
           pattern: dist-*
           merge-multiple: true
+          path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
           skip-existing: true
           print-hash: true
-          packages-dir: .
+          packages-dir: dist
       - name: Create a GitHub Release
         if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         with:
           files: |
-            *
+            dist/*
           generate_release_notes: true
