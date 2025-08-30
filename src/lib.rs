@@ -16,7 +16,7 @@ fn hash_shuffle_bits(h: usize) -> usize {
 #[derive(Debug)]
 struct Key {
     hash: isize,
-    inner: PyObject,
+    inner: Py<PyAny>,
 }
 
 impl<'py> IntoPyObject<'py> for Key {
@@ -49,7 +49,7 @@ impl Eq for Key {}
 
 impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.inner
                 .call_method1(py, "__eq__", (&other.inner,))
                 .and_then(|value| value.extract(py))
@@ -79,11 +79,11 @@ impl<'source> FromPyObject<'source> for Key {
 #[repr(transparent)]
 #[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping)]
 struct HashTrieMapPy {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
-impl From<HashTrieMapSync<Key, PyObject>> for HashTrieMapPy {
-    fn from(map: HashTrieMapSync<Key, PyObject>) -> Self {
+impl From<HashTrieMapSync<Key, Py<PyAny>>> for HashTrieMapPy {
+    fn from(map: HashTrieMapSync<Key, Py<PyAny>>) -> Self {
         HashTrieMapPy { inner: map }
     }
 }
@@ -93,7 +93,7 @@ impl<'source> FromPyObject<'source> for HashTrieMapPy {
         let mut ret = HashTrieMap::new_sync();
         if let Ok(mapping) = ob.downcast::<PyMapping>() {
             for each in mapping.items()?.iter() {
-                let (k, v): (Key, PyObject) = each.extract()?;
+                let (k, v): (Key, Py<PyAny>) = each.extract()?;
                 ret.insert_mut(k, v);
             }
         } else {
@@ -137,7 +137,7 @@ impl HashTrieMapPy {
         }
     }
 
-    fn __getitem__(&self, key: Key, py: Python) -> PyResult<PyObject> {
+    fn __getitem__(&self, key: Key, py: Python) -> PyResult<Py<PyAny>> {
         match self.inner.get(&key) {
             Some(value) => Ok(value.clone_ref(py)),
             None => Err(PyKeyError::new_err(key)),
@@ -167,7 +167,7 @@ impl HashTrieMapPy {
         )
     }
 
-    fn __richcmp__<'py>(&self, other: &Self, op: CompareOp, py: Python<'py>) -> PyResult<PyObject> {
+    fn __richcmp__<'py>(&self, other: &Self, op: CompareOp, py: Python<'py>) -> PyResult<Py<PyAny>> {
         match op {
             CompareOp::Eq => (self.inner.size() == other.inner.size()
                 && self
@@ -240,7 +240,7 @@ impl HashTrieMapPy {
         Ok(hash_val as isize)
     }
 
-    fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, PyObject)>,)) {
+    fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<(Key, Py<PyAny>)>,)) {
         (
             HashTrieMapPy::type_object(slf.py()),
             (slf.inner
@@ -255,7 +255,7 @@ impl HashTrieMapPy {
         _cls: &Bound<'_, PyType>,
         value: Bound<'_, PyAny>,
         py: Python,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         if value.is_instance_of::<HashTrieMapPy>() {
             Ok(value.unbind())
         } else {
@@ -285,7 +285,7 @@ impl HashTrieMapPy {
     }
 
     #[pyo3(signature = (key, default=None))]
-    fn get(&self, key: Key, default: Option<PyObject>, py: Python) -> Option<PyObject> {
+    fn get(&self, key: Key, default: Option<Py<PyAny>>, py: Python) -> Option<Py<PyAny>> {
         if let Some(value) = self.inner.get(&key) {
             Some(value.clone_ref(py))
         } else {
@@ -361,7 +361,7 @@ impl HashTrieMapPy {
 
 #[pyclass(module = "rpds")]
 struct KeysIterator {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[pymethods]
@@ -379,7 +379,7 @@ impl KeysIterator {
 
 #[pyclass(module = "rpds")]
 struct ValuesIterator {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[pymethods]
@@ -388,7 +388,7 @@ impl ValuesIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
         let kv = slf.inner.iter().next()?;
         let value = kv.1.clone_ref(slf.py());
         slf.inner = slf.inner.remove(kv.0);
@@ -398,7 +398,7 @@ impl ValuesIterator {
 
 #[pyclass(module = "rpds")]
 struct ItemsIterator {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[pymethods]
@@ -407,7 +407,7 @@ impl ItemsIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, PyObject)> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, Py<PyAny>)> {
         let kv = slf.inner.iter().next()?;
         let key = kv.0.clone_ref(slf.py());
         let value = kv.1.clone_ref(slf.py());
@@ -420,7 +420,7 @@ impl ItemsIterator {
 
 #[pyclass(module = "rpds")]
 struct KeysView {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[pymethods]
@@ -552,7 +552,7 @@ impl KeysView {
 
 #[pyclass(module = "rpds")]
 struct ValuesView {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[pymethods]
@@ -581,11 +581,11 @@ impl ValuesView {
 
 #[pyclass(module = "rpds")]
 struct ItemsView {
-    inner: HashTrieMapSync<Key, PyObject>,
+    inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
 
 #[derive(FromPyObject)]
-struct ItemViewQuery(Key, PyObject);
+struct ItemViewQuery(Key, Py<PyAny>);
 
 #[pymethods]
 impl ItemsView {
@@ -1042,11 +1042,11 @@ impl SetIterator {
 #[repr(transparent)]
 #[pyclass(name = "List", module = "rpds", frozen, sequence)]
 struct ListPy {
-    inner: ListSync<PyObject>,
+    inner: ListSync<Py<PyAny>>,
 }
 
-impl From<ListSync<PyObject>> for ListPy {
-    fn from(elements: ListSync<PyObject>) -> Self {
+impl From<ListSync<Py<PyAny>>> for ListPy {
+    fn from(elements: ListSync<Py<PyAny>>) -> Self {
         ListPy { inner: elements }
     }
 }
@@ -1100,7 +1100,7 @@ impl ListPy {
         Ok(format!("List([{}])", contents.join(", ")))
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
         match op {
             CompareOp::Eq => (self.inner.len() == other.inner.len()
                 && self
@@ -1165,7 +1165,7 @@ impl ListPy {
         }
     }
 
-    fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<PyObject>,)) {
+    fn __reduce__(slf: PyRef<Self>) -> (Bound<'_, PyType>, (Vec<Py<PyAny>>,)) {
         (
             ListPy::type_object(slf.py()),
             (slf.inner.iter().map(|e| e.clone_ref(slf.py())).collect(),),
@@ -1173,7 +1173,7 @@ impl ListPy {
     }
 
     #[getter]
-    fn first(&self) -> PyResult<&PyObject> {
+    fn first(&self) -> PyResult<&Py<PyAny>> {
         self.inner
             .first()
             .ok_or_else(|| PyIndexError::new_err("empty list has no first element"))
@@ -1186,7 +1186,7 @@ impl ListPy {
         ListPy { inner }
     }
 
-    fn push_front(&self, other: PyObject) -> ListPy {
+    fn push_front(&self, other: Py<PyAny>) -> ListPy {
         ListPy {
             inner: self.inner.push_front(other),
         }
@@ -1203,7 +1203,7 @@ impl ListPy {
 
 #[pyclass(module = "rpds")]
 struct ListIterator {
-    inner: ListSync<PyObject>,
+    inner: ListSync<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -1212,7 +1212,7 @@ impl ListIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
         let first_op = slf.inner.first()?;
         let first = first_op.clone_ref(slf.py());
 
@@ -1224,7 +1224,7 @@ impl ListIterator {
 
 #[pyclass(module = "rpds")]
 struct QueueIterator {
-    inner: QueueSync<PyObject>,
+    inner: QueueSync<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -1233,7 +1233,7 @@ impl QueueIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
         let first_op = slf.inner.peek()?;
         let first = first_op.clone_ref(slf.py());
         slf.inner = slf.inner.dequeue()?;
@@ -1244,11 +1244,11 @@ impl QueueIterator {
 #[repr(transparent)]
 #[pyclass(name = "Queue", module = "rpds", frozen, sequence)]
 struct QueuePy {
-    inner: QueueSync<PyObject>,
+    inner: QueueSync<Py<PyAny>>,
 }
 
-impl From<QueueSync<PyObject>> for QueuePy {
-    fn from(elements: QueueSync<PyObject>) -> Self {
+impl From<QueueSync<Py<PyAny>>> for QueuePy {
+    fn from(elements: QueueSync<Py<PyAny>>) -> Self {
         QueuePy { inner: elements }
     }
 }
@@ -1351,7 +1351,7 @@ impl QueuePy {
     }
 
     #[getter]
-    fn peek(&self, py: Python) -> PyResult<PyObject> {
+    fn peek(&self, py: Python) -> PyResult<Py<PyAny>> {
         if let Some(peeked) = self.inner.peek() {
             Ok(peeked.clone_ref(py))
         } else {

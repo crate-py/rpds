@@ -12,7 +12,7 @@ pytest==8.4.1
     # via
     #   -r tests/requirements.in
     #   pytest-run-parallel
-pytest-run-parallel==0.4.4
+pytest-run-parallel==0.6.1
     # via -r tests/requirements.in
 rpds-py @ file:.#egg=rpds-py
     # via -r tests/requirements.in
