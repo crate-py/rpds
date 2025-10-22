@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "rpds-py"
 description = "Python bindings to Rust's persistent data structures (rpds)"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.rst"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -18,7 +18,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Rust",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

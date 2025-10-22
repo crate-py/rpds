@@ -18,9 +18,7 @@ REQUIREMENTS_IN = [  # this is actually ordered, as files depend on each other
 ]
 
 SUPPORTED = [
-    "3.9",
     "3.10",
-    "pypy3.10",
     "3.11",
     "pypy3.11",
     "3.12",
