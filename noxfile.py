@@ -84,15 +84,6 @@ def tests(session):
         session.run("pytest", "--parallel-threads=10", *session.posargs, TESTS)
 
 
-@session()
-def audit(session):
-    """
-    Audit dependencies for vulnerabilities.
-    """
-    session.install("pip-audit", ROOT)
-    session.run("python", "-m", "pip_audit", ROOT)
-
-
 @session(tags=["build"])
 def build(session):
     """
