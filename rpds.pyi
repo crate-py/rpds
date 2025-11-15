@@ -1,11 +1,13 @@
-from typing import (
+from collections.abc import (
     ItemsView,
     Iterable,
     Iterator,
     KeysView,
     Mapping,
-    TypeVar,
     ValuesView,
+)
+from typing import (
+    TypeVar,
 )
 
 _T = TypeVar("_T")
