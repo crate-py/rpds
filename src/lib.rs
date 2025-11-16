@@ -5,6 +5,7 @@ use pyo3::{exceptions::PyKeyError, types::PyMapping, types::PyTupleMethods};
 use pyo3::{prelude::*, BoundObject, PyTypeInfo};
 use rpds::{
     HashTrieMap, HashTrieMapSync, HashTrieSet, HashTrieSetSync, List, ListSync, Queue, QueueSync,
+    Stack, StackSync,
 };
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -1238,6 +1239,155 @@ impl ListIterator {
     }
 }
 
+#[repr(transparent)]
+#[pyclass(name = "Stack", module = "rpds", frozen, sequence)]
+struct StackPy {
+    inner: StackSync<Py<PyAny>>,
+}
+
+impl From<StackSync<Py<PyAny>>> for StackPy {
+    fn from(elements: StackSync<Py<PyAny>>) -> Self {
+        StackPy { inner: elements }
+    }
+}
+
+#[pymethods]
+impl StackPy {
+    #[new]
+    #[pyo3(signature = (*args))]
+    fn init(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
+        let mut inner = Stack::new_sync();
+        if args.len() == 1 {
+            for each in args.get_item(0)?.try_iter()? {
+                inner.push_mut(each?.extract()?);
+            }
+        } else {
+            for each in args {
+                inner.push_mut(each.extract()?);
+            }
+        }
+        Ok(StackPy { inner })
+    }
+
+    fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
+        let mut hasher = DefaultHasher::new();
+
+        self.inner
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, each)| {
+                each.bind(py)
+                    .hash()
+                    .map_err(|_| {
+                        PyTypeError::new_err(format!(
+                            "Unhashable type at {} element in Stack: {}",
+                            index,
+                            each.bind(py)
+                                .repr()
+                                .and_then(|r| r.extract())
+                                .unwrap_or("<repr> error".to_string())
+                        ))
+                    })
+                    .map(|x| hasher.write_isize(x))
+            })?;
+
+        Ok(hasher.finish())
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> StackIterator {
+        StackIterator {
+            inner: slf.inner.clone(),
+        }
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.size()
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        match op {
+            CompareOp::Eq => (self.inner.size() == other.inner.size()
+                && self
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| e1.bind(py).eq(e2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_pyobject(py)
+            .map_err(Into::into)
+            .map(BoundObject::into_any)
+            .map(BoundObject::unbind),
+            CompareOp::Ne => (self.inner.size() != other.inner.size()
+                || self
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| e1.bind(py).ne(e2))
+                    .any(|r| r.unwrap_or(true)))
+            .into_pyobject(py)
+            .map_err(Into::into)
+            .map(BoundObject::into_any)
+            .map(BoundObject::unbind),
+            _ => Ok(py.NotImplemented()),
+        }
+    }
+
+    fn __repr__(&self, py: Python) -> PyResult<String> {
+        let contents = self.inner.into_iter().map(|k| {
+            Ok(k.into_pyobject(py)?
+                .call_method0("__repr__")
+                .and_then(|r| r.extract())
+                .unwrap_or("<repr failed>".to_owned()))
+        });
+        let mut contents = contents.collect::<Result<Vec<_>, PyErr>>()?;
+        contents.reverse();
+        Ok(format!("Stack([{}])", contents.join(", ")))
+    }
+
+    fn peek(&self, py: Python) -> PyResult<Py<PyAny>> {
+        if let Some(peeked) = self.inner.peek() {
+            Ok(peeked.clone_ref(py))
+        } else {
+            Err(PyIndexError::new_err("peeked an empty stack"))
+        }
+    }
+
+    fn pop(&self) -> PyResult<StackPy> {
+        if let Some(popped) = self.inner.pop() {
+            Ok(StackPy { inner: popped })
+        } else {
+            Err(PyIndexError::new_err("popped an empty stack"))
+        }
+    }
+
+    fn push(&self, other: Py<PyAny>) -> StackPy {
+        StackPy {
+            inner: self.inner.push(other),
+        }
+    }
+}
+
+#[pyclass(module = "rpds")]
+struct StackIterator {
+    inner: StackSync<Py<PyAny>>,
+}
+
+#[pymethods]
+impl StackIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
+        let first_op = slf.inner.peek()?;
+        let first = first_op.clone_ref(slf.py());
+
+        slf.inner = slf.inner.pop()?;
+
+        Some(first)
+    }
+}
+
 #[pyclass(module = "rpds")]
 struct QueueIterator {
     inner: QueueSync<Py<PyAny>>,
@@ -1401,6 +1551,7 @@ fn rpds_py(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<HashTrieMapPy>()?;
     m.add_class::<HashTrieSetPy>()?;
     m.add_class::<ListPy>()?;
+    m.add_class::<StackPy>()?;
     m.add_class::<QueuePy>()?;
 
     PyMapping::register::<HashTrieMapPy>(py)?;
