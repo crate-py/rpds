@@ -139,3 +139,22 @@ known-first-party = ["rpds"]
 "noxfile.py" = ["ANN", "D100", "S101", "T201"]
 "docs/*" = ["ANN", "D", "INP001"]
 "tests/*" = ["ANN", "B018", "D", "PLR", "RUF012", "S", "SIM", "TRY"]
+
+[dependency-groups]
+docs = [
+  "furo>=2025.9.25",
+  "pygments-github-lexers>=0.0.5",
+  "sphinx>5",
+  "sphinx-copybutton>=0.5.2",
+  "sphinxcontrib-spelling>5",
+  "sphinxext-opengraph>=0.13.0",
+  "url-py>=0.18.0",
+]
+test = [
+  "pytest>=9.0.1",
+  "pytest-run-parallel>=0.7.1",
+]
+typing = [
+  { include-group = "test" },
+  "pyright>=1.1.407",
+]

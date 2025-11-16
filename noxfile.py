@@ -9,14 +9,6 @@ PYPROJECT = ROOT / "pyproject.toml"
 DOCS = ROOT / "docs"
 TESTS = ROOT / "tests"
 
-REQUIREMENTS = dict(
-    docs=DOCS / "requirements.txt",
-    tests=TESTS / "requirements.txt",
-)
-REQUIREMENTS_IN = [  # this is actually ordered, as files depend on each other
-    (path.parent / f"{path.stem}.in", path) for path in REQUIREMENTS.values()
-]
-
 SUPPORTED = [
     "3.10",
     "3.11",
@@ -29,7 +21,7 @@ SUPPORTED = [
 ]
 LATEST = SUPPORTED[-1]
 
-nox.options.default_venv_backend = "uv|virtualenv"
+nox.options.default_venv_backend = "uv"
 nox.options.sessions = []
 
 
@@ -52,12 +44,15 @@ def tests(session):
     # but it produces strange symbol errors saying:
     #   dynamic module does not define module export function (PyInit_rpds)
     # so OK, dev it is.
-    session.install(
-        "--config-settings",
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=test",
+        "--config-setting",
         "build-args=--profile=dev",
         "--no-cache",
-        "-r",
-        REQUIREMENTS["tests"],
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
 
     if session.posargs and session.posargs[0] == "coverage":
@@ -89,9 +84,15 @@ def build(session):
     """
     Build a distribution suitable for PyPI and check its validity.
     """
-    session.install("build", "twine")
+    session.install("build[uv]", "twine")
     with TemporaryDirectory() as tmpdir:
-        session.run("python", "-m", "build", ROOT, "--outdir", tmpdir)
+        session.run(
+            "pyproject-build",
+            "--installer=uv",
+            ROOT,
+            "--outdir",
+            tmpdir,
+        )
         session.run("twine", "check", "--strict", tmpdir + "/*")
 
 
@@ -109,7 +110,16 @@ def typing(session):
     """
     Check the codebase using pyright by type checking the test suite.
     """
-    session.install("pyright", ROOT, "-r", REQUIREMENTS["tests"])
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=typing",
+        "--config-setting",
+        "build-args=--profile=dev",
+        "--no-cache",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
     session.run("pyright", TESTS)
 
 
@@ -131,7 +141,16 @@ def docs(session, builder):
     """
     Build the documentation using a specific Sphinx builder.
     """
-    session.install("-r", REQUIREMENTS["docs"])
+    session.run_install(
+        "uv",
+        "sync",
+        "--group=docs",
+        "--config-setting",
+        "build-args=--profile=dev",
+        "--no-cache",
+        f"--python={session.virtualenv.location}",
+        env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
+    )
     with TemporaryDirectory() as tmpdir_str:
         tmpdir = Path(tmpdir_str)
         argv = ["-n", "-T", "-W"]
@@ -161,22 +180,3 @@ def docs_style(session):
         "pygments-github-lexers",
     )
     session.run("python", "-m", "doc8", "--config", PYPROJECT, DOCS)
-
-
-@session(default=False)
-def requirements(session):
-    """
-    Update the project's pinned requirements.
-
-    You should commit the result afterwards.
-    """
-    if session.venv_backend == "uv":
-        cmd = ["uv", "pip", "compile"]
-    else:
-        session.install("pip-tools")
-        cmd = ["pip-compile", "--resolver", "backtracking", "--strip-extras"]
-
-    for each, out in REQUIREMENTS_IN:
-        # otherwise output files end up with silly absolute path comments...
-        relative = each.relative_to(ROOT)
-        session.run(*cmd, "--upgrade", "--output-file", out, relative)
