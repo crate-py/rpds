@@ -1368,7 +1368,6 @@ impl QueuePy {
         Ok(format!("Queue([{}])", contents.join(", ")))
     }
 
-    #[getter]
     fn peek(&self, py: Python) -> PyResult<Py<PyAny>> {
         if let Some(peeked) = self.inner.peek() {
             Ok(peeked.clone_ref(py))
@@ -1377,7 +1376,6 @@ impl QueuePy {
         }
     }
 
-    #[getter]
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }

@@ -38,15 +38,15 @@ def test_literalish_works():
 
 def test_peek_dequeue():
     pl = Queue([1, 2])
-    assert pl.peek == 1
-    assert pl.dequeue().peek == 2
+    assert pl.peek() == 1
+    assert pl.dequeue().peek() == 2
     assert pl.dequeue().dequeue().is_empty
     with pytest.raises(IndexError):
         pl.dequeue().dequeue().dequeue()
 
 
 def test_instantiate_large_list():
-    assert Queue(range(1000)).peek == 0
+    assert Queue(range(1000)).peek() == 0
 
 
 def test_iteration():
@@ -74,7 +74,7 @@ def test_len():
 
 def test_peek_illegal_on_empty_list():
     with pytest.raises(IndexError):
-        Queue().peek
+        Queue().peek()
 
 
 def test_inequality():
