@@ -24,10 +24,10 @@ SUPPORTED = [
     "3.12",
     "3.13",
     "3.13t",
-    "3.14",
     "3.14t",
+    "3.14",
 ]
-LATEST = "3.13"
+LATEST = SUPPORTED[-1]
 
 nox.options.default_venv_backend = "uv|virtualenv"
 nox.options.sessions = []
