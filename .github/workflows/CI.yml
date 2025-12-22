@@ -113,7 +113,7 @@ jobs:
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
@@ -154,7 +154,7 @@ jobs:
           manylinux: musllinux_1_2
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
@@ -189,7 +189,7 @@ jobs:
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.14'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
@@ -247,7 +247,7 @@ jobs:
           args: --release --out dist --interpreter ${{ steps.cp311.outputs.python-path }} ${{ steps.cp312.outputs.python-path }} ${{ steps.cp313.outputs.python-path }} ${{ steps.cp314.outputs.python-path }}
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
@@ -281,7 +281,7 @@ jobs:
           args: --release --out dist --interpreter '3.13t 3.14t'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}-free-threaded
           path: dist
@@ -318,7 +318,7 @@ jobs:
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}-${{ matrix.target }}
           path: dist
@@ -339,7 +339,7 @@ jobs:
           command: sdist
           args: --out dist
       - name: Upload sdist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ github.job }}
           path: dist
