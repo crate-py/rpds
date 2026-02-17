@@ -106,7 +106,7 @@ jobs:
             pypy3.11
           allow-prereleases: true
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11'
@@ -147,7 +147,7 @@ jobs:
             pypy3.11
           allow-prereleases: true
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11'
@@ -183,7 +183,7 @@ jobs:
           allow-prereleases: true
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.14'
@@ -241,7 +241,7 @@ jobs:
           .\rustup-init.exe -y
           Add-Content $env:GITHUB_PATH "$env:USERPROFILE\.cargo\bin"
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter ${{ steps.cp311.outputs.python-path }} ${{ steps.cp312.outputs.python-path }} ${{ steps.cp313.outputs.python-path }} ${{ steps.cp314.outputs.python-path }}
@@ -275,7 +275,7 @@ jobs:
           allow-prereleases: true
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.13t 3.14t'
@@ -312,7 +312,7 @@ jobs:
             pypy3.11
           allow-prereleases: true
       - name: Build wheels
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --interpreter '3.10 3.11 3.12 3.13 3.13t 3.14 3.14t pypy3.11'
@@ -334,7 +334,7 @@ jobs:
         with:
           python-version: 3.13
       - name: Build an sdist
-        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1.49.4
+        uses: PyO3/maturin-action@b1bd829e37fef14c63f19162034228a2f3dc1021 # v1.50.0
         with:
           command: sdist
           args: --out dist
