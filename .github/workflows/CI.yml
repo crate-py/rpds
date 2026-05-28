@@ -34,18 +34,18 @@ jobs:
       - id: noxenvs-matrix
         run: |
           echo >>$GITHUB_OUTPUT noxenvs=$(
-            uvx nox --list-sessions --json | jq '[.[].session]'
+            uvx nox --list-sessions --json | jq '[.[] | {session, python}]'
           )
 
   test:
-    name: Test
+    name: Test (${{ matrix.session }})
     needs: list
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        noxenv: ${{ fromJson(needs.list.outputs.noxenvs) }}
+        include: ${{ fromJson(needs.list.outputs.noxenvs) }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -53,30 +53,21 @@ jobs:
           persist-credentials: false
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libenchant-2-dev
-        if: runner.os == 'Linux' && startsWith(matrix.noxenv, 'docs')
+        if: runner.os == 'Linux' && startsWith(matrix.session, 'docs')
       - name: Install dependencies
         run: brew install enchant
-        if: runner.os == 'macOS' && startsWith(matrix.noxenv, 'docs')
+        if: runner.os == 'macOS' && startsWith(matrix.session, 'docs')
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: |
-            3.11
-            3.12
-            3.13
-            3.13t
-            3.14
-            3.14t
-            3.15
-            3.15t
-            pypy3.11
+          python-version: ${{ matrix.python }}
           allow-prereleases: true
 
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Run nox
-        run: uvx nox -s "${{ matrix.noxenv }}" # zizmor: ignore[template-injection]
+        run: uvx nox -s "${{ matrix.session }}" # zizmor: ignore[template-injection]
 
   manylinux:
     name: Build manylinux wheels
