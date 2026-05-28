@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "rpds-py"
 description = "Python bindings to Rust's persistent data structures (rpds)"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.rst"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -18,11 +18,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Rust",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
@@ -46,7 +46,7 @@ docs = [
   "sphinx-copybutton>=0.5.2",
   "sphinxcontrib-spelling>5",
   "sphinxext-opengraph>=0.13.0",
-  "url-py>=0.18.0",
+  "url-py>=2026.5.1",
 ]
 test = [
   "pytest>=9.0.1",
