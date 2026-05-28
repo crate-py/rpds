@@ -46,7 +46,7 @@ docs = [
   "sphinx-copybutton>=0.5.2",
   "sphinxcontrib-spelling>5",
   "sphinxext-opengraph>=0.13.0",
-  "url-py>=0.18.0",
+  "url-py>=2026.5.1",
 ]
 test = [
   "pytest>=9.0.1",
