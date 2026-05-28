@@ -10,7 +10,6 @@ DOCS = ROOT / "docs"
 TESTS = ROOT / "tests"
 
 SUPPORTED = [
-    "3.10",
     "3.11",
     "pypy3.11",
     "3.12",
@@ -18,6 +17,8 @@ SUPPORTED = [
     "3.13t",
     "3.14t",
     "3.14",
+    "3.15t",
+    "3.15",
 ]
 LATEST = SUPPORTED[-1]
 
