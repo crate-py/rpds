@@ -1,6 +1,6 @@
 [package]
 name = "rpds-py"
-version = "0.30.0"
+version = "2026.5.1"
 edition = "2021"
 
 [lib]
