@@ -109,6 +109,7 @@ ignore = [
   "B905",  # No need for explicit strict, this is simply zip's default behavior
   "C408",  # Calling dict is fine when it saves quoting the keys
   "C901",  # Not really something to focus on
+  "CPY",  # No need for copyright notices.
   "D105",  # It's fine to not have docstrings for magic methods.
   "D107",  # __init__ especially doesn't need a docstring
   "D200",  # This rule makes diffs uglier when expanding docstrings
@@ -127,6 +128,7 @@ ignore = [
   "PLR0912",  # These metrics are fine to be aware of but not to enforce
   "PLR0913",
   "PLR0915",
+  "PLR0917",
   "PLW2901",  # Shadowing for loop variables is occasionally fine.
   "PT006",  # pytest parametrize takes strings as well
   "PYI025",  # wat, I'm not confused, thanks.
