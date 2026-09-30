@@ -104,12 +104,13 @@ jobs:
             3.15
             3.15t
             pypy3.11
+            pypy3.12
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11'
+          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11 pypy3.12'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
           manylinux: auto
       - name: Upload wheels
@@ -147,12 +148,13 @@ jobs:
             3.15
             3.15t
             pypy3.11
+            pypy3.12
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11'
+          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11 pypy3.12'
           manylinux: musllinux_1_2
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
@@ -319,12 +321,13 @@ jobs:
             3.15
             3.15t
             pypy3.11
+            pypy3.12
           allow-prereleases: true
       - name: Build wheels
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11'
+          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.14t 3.15 3.15t pypy3.11 pypy3.12'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

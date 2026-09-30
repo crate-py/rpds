@@ -12,6 +12,7 @@ TESTS = ROOT / "tests"
 SUPPORTED = [
     "3.11",
     "pypy3.11",
+    "pypy3.12",
     "3.12",
     "3.13",
     "3.14t",
