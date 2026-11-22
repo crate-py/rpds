@@ -52,6 +52,20 @@ fn seq_eq<'a>(
     Ok(true)
 }
 
+fn catch_key_err<T>(f: impl FnOnce() -> T) -> PyResult<T> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        Ok(value) => Ok(value),
+        Err(payload) => match payload.downcast::<PyErr>() {
+            Ok(err) => Err(*err),
+            Err(payload) => std::panic::resume_unwind(payload),
+        },
+    }
+}
+
+fn try_catch_key_err<T>(f: impl FnOnce() -> PyResult<T>) -> PyResult<T> {
+    catch_key_err(f)?
+}
+
 #[derive(Debug)]
 struct Key {
     hash: isize,
@@ -94,11 +108,9 @@ impl PartialEq for Key {
         if self.hash != other.hash {
             return false;
         }
-        Python::attach(|py| {
-            self.inner
-                .bind(py)
-                .eq(&other.inner)
-                .expect("__eq__ failed!")
+        Python::attach(|py| match self.inner.bind(py).eq(&other.inner) {
+            Ok(equal) => equal,
+            Err(err) => std::panic::resume_unwind(Box::new(err)),
         })
     }
 }
@@ -141,15 +153,17 @@ impl HashTrieMapPy {
         if size == 0 {
             return Ok(true);
         }
-        for (key, value) in self.inner.iter() {
-            let Some(other_value) = other.inner.get(key) else {
-                return Ok(false);
-            };
-            if !py_eq(value, other_value, py)? {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for (key, value) in self.inner.iter() {
+                let Some(other_value) = other.inner.get(key) else {
+                    return Ok(false);
+                };
+                if !py_eq(value, other_value, py)? {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 }
 
@@ -163,19 +177,21 @@ impl<'py> FromPyObject<'_, 'py> for HashTrieMapPy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
-        let mut ret = HashTrieMap::new_sync();
-        if let Ok(mapping) = ob.cast::<PyMapping>() {
-            for each in mapping.items()?.iter() {
-                let (k, v): (Key, Py<PyAny>) = each.extract()?;
-                ret.insert_mut(k, v);
+        try_catch_key_err(|| {
+            let mut ret = HashTrieMap::new_sync();
+            if let Ok(mapping) = ob.cast::<PyMapping>() {
+                for each in mapping.items()?.iter() {
+                    let (k, v): (Key, Py<PyAny>) = each.extract()?;
+                    ret.insert_mut(k, v);
+                }
+            } else {
+                for each in ob.try_iter()? {
+                    let (k, v) = each?.extract()?;
+                    ret.insert_mut(k, v);
+                }
             }
-        } else {
-            for each in ob.try_iter()? {
-                let (k, v) = each?.extract()?;
-                ret.insert_mut(k, v);
-            }
-        }
-        Ok(HashTrieMapPy { inner: ret })
+            Ok(HashTrieMapPy { inner: ret })
+        })
     }
 }
 
@@ -195,16 +211,19 @@ impl HashTrieMapPy {
             };
         }
         if let Some(kwds) = kwds {
-            for (k, v) in kwds {
-                map.inner
-                    .insert_mut(Key::extract(k.as_borrowed())?, v.into());
-            }
+            try_catch_key_err(|| {
+                for (k, v) in kwds {
+                    map.inner
+                        .insert_mut(Key::extract(k.as_borrowed())?, v.into());
+                }
+                Ok(())
+            })?;
         }
         Ok(map)
     }
 
-    fn __contains__(&self, key: Key) -> bool {
-        self.inner.contains_key(&key)
+    fn __contains__(&self, key: Key) -> PyResult<bool> {
+        catch_key_err(|| self.inner.contains_key(&key))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
@@ -214,7 +233,7 @@ impl HashTrieMapPy {
     }
 
     fn __getitem__(&self, key: Key, py: Python) -> PyResult<Py<PyAny>> {
-        match self.inner.get(&key) {
+        match catch_key_err(|| self.inner.get(&key))? {
             Some(value) => Ok(value.clone_ref(py)),
             None => Err(PyKeyError::new_err(key)),
         }
@@ -326,22 +345,24 @@ impl HashTrieMapPy {
         val: Option<&Bound<'_, PyAny>>,
         py: Python,
     ) -> PyResult<HashTrieMapPy> {
-        let mut inner = HashTrieMap::new_sync();
-        let none = py.None().into_bound(py);
-        let value = val.unwrap_or(&none);
-        for each in keys.try_iter()? {
-            let key = Key::extract(each?.as_borrowed())?;
-            inner.insert_mut(key, value.clone().unbind());
-        }
-        Ok(HashTrieMapPy { inner })
+        try_catch_key_err(|| {
+            let mut inner = HashTrieMap::new_sync();
+            let none = py.None().into_bound(py);
+            let value = val.unwrap_or(&none);
+            for each in keys.try_iter()? {
+                let key = Key::extract(each?.as_borrowed())?;
+                inner.insert_mut(key, value.clone().unbind());
+            }
+            Ok(HashTrieMapPy { inner })
+        })
     }
 
     #[pyo3(signature = (key, default=None))]
-    fn get(&self, key: Key, default: Option<Py<PyAny>>, py: Python) -> Option<Py<PyAny>> {
-        if let Some(value) = self.inner.get(&key) {
-            Some(value.clone_ref(py))
+    fn get(&self, key: Key, default: Option<Py<PyAny>>, py: Python) -> PyResult<Option<Py<PyAny>>> {
+        if let Some(value) = catch_key_err(|| self.inner.get(&key))? {
+            Ok(Some(value.clone_ref(py)))
         } else {
-            default
+            Ok(default)
         }
     }
 
@@ -364,29 +385,29 @@ impl HashTrieMapPy {
     }
 
     fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
-        match self.inner.contains_key(&key) {
-            true => Ok(HashTrieMapPy {
+        catch_key_err(|| match self.inner.contains_key(&key) {
+            true => HashTrieMapPy {
                 inner: self.inner.remove(&key),
-            }),
-            false => Ok(HashTrieMapPy {
+            },
+            false => HashTrieMapPy {
                 inner: self.inner.clone(),
-            }),
-        }
+            },
+        })
     }
 
-    fn insert(&self, key: Key, value: Bound<'_, PyAny>) -> HashTrieMapPy {
-        HashTrieMapPy {
+    fn insert(&self, key: Key, value: Bound<'_, PyAny>) -> PyResult<HashTrieMapPy> {
+        catch_key_err(|| HashTrieMapPy {
             inner: self.inner.insert(key, value.unbind()),
-        }
+        })
     }
 
     fn remove(&self, key: Key) -> PyResult<HashTrieMapPy> {
-        match self.inner.contains_key(&key) {
+        try_catch_key_err(|| match self.inner.contains_key(&key) {
             true => Ok(HashTrieMapPy {
                 inner: self.inner.remove(&key),
             }),
             false => Err(PyKeyError::new_err(key)),
-        }
+        })
     }
 
     #[pyo3(signature = (*maps, **kwds))]
@@ -395,19 +416,21 @@ impl HashTrieMapPy {
         maps: &Bound<'_, PyTuple>,
         kwds: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<HashTrieMapPy> {
-        let mut inner = self.inner.clone();
-        for value in maps {
-            let map = HashTrieMapPy::extract(value.as_borrowed())?;
-            for (k, v) in &map.inner {
-                inner.insert_mut(k.clone_ref(value.py()), v.clone_ref(value.py()));
+        try_catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            for value in maps {
+                let map = HashTrieMapPy::extract(value.as_borrowed())?;
+                for (k, v) in &map.inner {
+                    inner.insert_mut(k.clone_ref(value.py()), v.clone_ref(value.py()));
+                }
             }
-        }
-        if let Some(kwds) = kwds {
-            for (k, v) in kwds {
-                inner.insert_mut(Key::extract(k.as_borrowed())?, v.extract()?);
+            if let Some(kwds) = kwds {
+                for (k, v) in kwds {
+                    inner.insert_mut(Key::extract(k.as_borrowed())?, v.extract()?);
+                }
             }
-        }
-        Ok(HashTrieMapPy { inner })
+            Ok(HashTrieMapPy { inner })
+        })
     }
 }
 
@@ -422,10 +445,14 @@ impl KeysIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        let first = slf.inner.keys().next()?.clone_ref(slf.py());
-        slf.inner = slf.inner.remove(&first);
-        Some(first)
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<Key>> {
+        let Some(first) = slf.inner.keys().next() else {
+            return Ok(None);
+        };
+        let first = first.clone_ref(slf.py());
+        let next = catch_key_err(|| slf.inner.remove(&first))?;
+        slf.inner = next;
+        Ok(Some(first))
     }
 }
 
@@ -440,11 +467,14 @@ impl ValuesIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Py<PyAny>> {
-        let kv = slf.inner.iter().next()?;
-        let value = kv.1.clone_ref(slf.py());
-        slf.inner = slf.inner.remove(kv.0);
-        Some(value)
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<Py<PyAny>>> {
+        let Some((key, value)) = slf.inner.iter().next() else {
+            return Ok(None);
+        };
+        let value = value.clone_ref(slf.py());
+        let next = catch_key_err(|| slf.inner.remove(key))?;
+        slf.inner = next;
+        Ok(Some(value))
     }
 }
 
@@ -459,14 +489,15 @@ impl ItemsIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<(Key, Py<PyAny>)> {
-        let kv = slf.inner.iter().next()?;
-        let key = kv.0.clone_ref(slf.py());
-        let value = kv.1.clone_ref(slf.py());
-
-        slf.inner = slf.inner.remove(kv.0);
-
-        Some((key, value))
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<(Key, Py<PyAny>)>> {
+        let Some((key, value)) = slf.inner.iter().next() else {
+            return Ok(None);
+        };
+        let key_copy = key.clone_ref(slf.py());
+        let value = value.clone_ref(slf.py());
+        let next = catch_key_err(|| slf.inner.remove(key))?;
+        slf.inner = next;
+        Ok(Some((key_copy, value)))
     }
 }
 
@@ -477,8 +508,8 @@ struct KeysView {
 
 #[pymethods]
 impl KeysView {
-    fn __contains__(&self, key: Key) -> bool {
-        self.inner.contains_key(&key)
+    fn __contains__(&self, key: Key) -> PyResult<bool> {
+        catch_key_err(|| self.inner.contains_key(&key))
     }
 
     fn __eq__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -486,12 +517,14 @@ impl KeysView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __lt__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -527,12 +560,14 @@ impl KeysView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __ge__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -540,12 +575,14 @@ impl KeysView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
@@ -581,24 +618,28 @@ impl KeysView {
 
     fn intersection(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>) -> PyResult<HashTrieSetPy> {
         // TODO: iterate over the shorter one if it's got a length
-        let mut inner = HashTrieSet::new_sync();
-        for each in other.try_iter()? {
-            let key = Key::extract(each?.as_borrowed())?;
-            if slf.inner.contains_key(&key) {
-                inner.insert_mut(key);
+        try_catch_key_err(|| {
+            let mut inner = HashTrieSet::new_sync();
+            for each in other.try_iter()? {
+                let key = Key::extract(each?.as_borrowed())?;
+                if slf.inner.contains_key(&key) {
+                    inner.insert_mut(key);
+                }
             }
-        }
-        Ok(HashTrieSetPy { inner })
+            Ok(HashTrieSetPy { inner })
+        })
     }
 
     fn union(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<KeysView> {
         // There doesn't seem to be a low-effort way to get a HashTrieSet out of a map,
         // so we just keep our map and add values we'll ignore.
-        let mut inner = slf.inner.clone();
-        for each in other.try_iter()? {
-            inner.insert_mut(Key::extract(each?.as_borrowed())?, py.None());
-        }
-        Ok(KeysView { inner })
+        try_catch_key_err(|| {
+            let mut inner = slf.inner.clone();
+            for each in other.try_iter()? {
+                inner.insert_mut(Key::extract(each?.as_borrowed())?, py.None());
+            }
+            Ok(KeysView { inner })
+        })
     }
 }
 
@@ -642,7 +683,7 @@ struct ItemViewQuery(Key, Py<PyAny>);
 #[pymethods]
 impl ItemsView {
     fn __contains__(slf: PyRef<'_, Self>, item: ItemViewQuery) -> PyResult<bool> {
-        if let Some(value) = slf.inner.get(&item.0) {
+        if let Some(value) = catch_key_err(|| slf.inner.get(&item.0))? {
             return py_eq(value, &item.1, slf.py());
         }
 
@@ -716,20 +757,22 @@ impl ItemsView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            let kv = each?;
-            let k = kv.get_item(0)?;
-            match slf.inner.get(&Key::extract(k.as_borrowed())?) {
-                Some(value) => {
-                    let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
-                    if !pair.eq(kv)? {
-                        return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                let kv = each?;
+                let k = kv.get_item(0)?;
+                match slf.inner.get(&Key::extract(k.as_borrowed())?) {
+                    Some(value) => {
+                        let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
+                        if !pair.eq(kv)? {
+                            return Ok(false);
+                        }
                     }
+                    None => return Ok(false),
                 }
-                None => return Ok(false),
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __ge__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -737,20 +780,22 @@ impl ItemsView {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            let kv = each?;
-            let k = kv.get_item(0)?;
-            match slf.inner.get(&Key::extract(k.as_borrowed())?) {
-                Some(value) => {
-                    let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
-                    if !pair.eq(kv)? {
-                        return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                let kv = each?;
+                let k = kv.get_item(0)?;
+                match slf.inner.get(&Key::extract(k.as_borrowed())?) {
+                    Some(value) => {
+                        let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
+                        if !pair.eq(kv)? {
+                            return Ok(false);
+                        }
                     }
+                    None => return Ok(false),
                 }
-                None => return Ok(false),
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __and__(
@@ -775,18 +820,20 @@ impl ItemsView {
         py: Python,
     ) -> PyResult<HashTrieSetPy> {
         // TODO: iterate over the shorter one if it's got a length
-        let mut inner = HashTrieSet::new_sync();
-        for each in other.try_iter()? {
-            let kv = each?;
-            let k = kv.get_item(0)?;
-            if let Some(value) = slf.inner.get(&Key::extract(k.as_borrowed())?) {
-                let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
-                if pair.eq(kv)? {
-                    inner.insert_mut(Key::extract(pair.as_any().as_borrowed())?);
+        try_catch_key_err(|| {
+            let mut inner = HashTrieSet::new_sync();
+            for each in other.try_iter()? {
+                let kv = each?;
+                let k = kv.get_item(0)?;
+                if let Some(value) = slf.inner.get(&Key::extract(k.as_borrowed())?) {
+                    let pair = PyTuple::new(py, [k, value.bind(py).clone()])?;
+                    if pair.eq(kv)? {
+                        inner.insert_mut(Key::extract(pair.as_any().as_borrowed())?);
+                    }
                 }
             }
-        }
-        Ok(HashTrieSetPy { inner })
+            Ok(HashTrieSetPy { inner })
+        })
     }
 
     fn union(
@@ -795,15 +842,17 @@ impl ItemsView {
         py: Python,
     ) -> PyResult<HashTrieSetPy> {
         // TODO: this is very inefficient, but again can't seem to get a HashTrieSet out of ourself
-        let mut inner = HashTrieSet::new_sync();
-        for (k, v) in slf.inner.iter() {
-            let pair = PyTuple::new(py, [k.inner.clone_ref(py), v.clone_ref(py)])?;
-            inner.insert_mut(Key::extract(pair.as_any().as_borrowed())?);
-        }
-        for each in other.try_iter()? {
-            inner.insert_mut(Key::extract(each?.as_borrowed())?);
-        }
-        Ok(HashTrieSetPy { inner })
+        try_catch_key_err(|| {
+            let mut inner = HashTrieSet::new_sync();
+            for (k, v) in slf.inner.iter() {
+                let pair = PyTuple::new(py, [k.inner.clone_ref(py), v.clone_ref(py)])?;
+                inner.insert_mut(Key::extract(pair.as_any().as_borrowed())?);
+            }
+            for each in other.try_iter()? {
+                inner.insert_mut(Key::extract(each?.as_borrowed())?);
+            }
+            Ok(HashTrieSetPy { inner })
+        })
     }
 }
 
@@ -817,12 +866,14 @@ impl<'py> FromPyObject<'_, 'py> for HashTrieSetPy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
-        let mut ret = HashTrieSet::new_sync();
-        for each in ob.try_iter()? {
-            let k: Key = each?.extract()?;
-            ret.insert_mut(k);
-        }
-        Ok(HashTrieSetPy { inner: ret })
+        try_catch_key_err(|| {
+            let mut ret = HashTrieSet::new_sync();
+            for each in ob.try_iter()? {
+                let k: Key = each?.extract()?;
+                ret.insert_mut(k);
+            }
+            Ok(HashTrieSetPy { inner: ret })
+        })
     }
 }
 
@@ -840,23 +891,23 @@ impl HashTrieSetPy {
         }
     }
 
-    fn __contains__(&self, key: Key) -> bool {
-        self.inner.contains(&key)
+    fn __contains__(&self, key: Key) -> PyResult<bool> {
+        catch_key_err(|| self.inner.contains(&key))
     }
 
-    fn __and__(&self, other: &Self, py: Python) -> Self {
+    fn __and__(&self, other: &Self, py: Python) -> PyResult<Self> {
         self.intersection(other, py)
     }
 
-    fn __or__(&self, other: &Self, py: Python) -> Self {
+    fn __or__(&self, other: &Self, py: Python) -> PyResult<Self> {
         self.union(other, py)
     }
 
-    fn __sub__(&self, other: &Self) -> Self {
+    fn __sub__(&self, other: &Self) -> PyResult<Self> {
         self.difference(other)
     }
 
-    fn __xor__(&self, other: &Self, py: Python) -> Self {
+    fn __xor__(&self, other: &Self, py: Python) -> PyResult<Self> {
         self.symmetric_difference(other, py)
     }
 
@@ -890,7 +941,10 @@ impl HashTrieSetPy {
             } else {
                 let size = self.inner.size();
                 size == other.inner.size()
-                    && (size == 0 || self.inner.iter().all(|key| other.inner.contains(key)))
+                    && (size == 0
+                        || catch_key_err(|| {
+                            self.inner.iter().all(|key| other.inner.contains(key))
+                        })?)
             };
             return Ok(PyBool::new(py, equal).into_any().unbind());
         }
@@ -903,12 +957,15 @@ impl HashTrieSetPy {
         if other.len()? != self.inner.size() {
             return Ok(PyBool::new(py, false).into_any().unbind());
         }
-        for each in other.try_iter()? {
-            if !self.inner.contains(&Key::extract(each?.as_borrowed())?) {
-                return Ok(PyBool::new(py, false).into_any().unbind());
+        let equal = try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !self.inner.contains(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(PyBool::new(py, true).into_any().unbind())
+            Ok(true)
+        })?;
+        Ok(PyBool::new(py, equal).into_any().unbind())
     }
 
     fn __hash__(&self) -> PyResult<isize> {
@@ -961,12 +1018,14 @@ impl HashTrieSetPy {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            if !slf.inner.contains(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !slf.inner.contains(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __ge__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
@@ -974,12 +1033,14 @@ impl HashTrieSetPy {
         if !other.is_instance(&abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
             return Ok(false);
         }
-        for each in other.try_iter()? {
-            if !slf.inner.contains(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+        try_catch_key_err(|| {
+            for each in other.try_iter()? {
+                if !slf.inner.contains(&Key::extract(each?.as_borrowed())?) {
+                    return Ok(false);
+                }
             }
-        }
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn __reduce__(slf: PyRef<'_, Self>) -> (Bound<'_, PyType>, (Vec<Key>,)) {
@@ -989,105 +1050,115 @@ impl HashTrieSetPy {
         )
     }
 
-    fn insert(&self, value: Key) -> HashTrieSetPy {
-        HashTrieSetPy {
+    fn insert(&self, value: Key) -> PyResult<HashTrieSetPy> {
+        catch_key_err(|| HashTrieSetPy {
             inner: self.inner.insert(value),
-        }
+        })
     }
 
     fn discard(&self, value: Key) -> PyResult<HashTrieSetPy> {
-        match self.inner.contains(&value) {
-            true => Ok(HashTrieSetPy {
+        catch_key_err(|| match self.inner.contains(&value) {
+            true => HashTrieSetPy {
                 inner: self.inner.remove(&value),
-            }),
-            false => Ok(HashTrieSetPy {
+            },
+            false => HashTrieSetPy {
                 inner: self.inner.clone(),
-            }),
-        }
+            },
+        })
     }
 
     fn remove(&self, value: Key) -> PyResult<HashTrieSetPy> {
-        match self.inner.contains(&value) {
+        try_catch_key_err(|| match self.inner.contains(&value) {
             true => Ok(HashTrieSetPy {
                 inner: self.inner.remove(&value),
             }),
             false => Err(PyKeyError::new_err(value)),
-        }
+        })
     }
 
-    fn difference(&self, other: &Self) -> HashTrieSetPy {
-        let mut inner = self.inner.clone();
-        for value in other.inner.iter() {
-            inner.remove_mut(value);
-        }
-        HashTrieSetPy { inner }
-    }
-
-    fn intersection(&self, other: &Self, py: Python) -> HashTrieSetPy {
-        let mut inner: HashTrieSetSync<Key> = HashTrieSet::new_sync();
-        let larger: &HashTrieSetSync<Key>;
-        let iter;
-        if self.inner.size() > other.inner.size() {
-            larger = &self.inner;
-            iter = other.inner.iter();
-        } else {
-            larger = &other.inner;
-            iter = self.inner.iter();
-        }
-        for value in iter {
-            if larger.contains(value) {
-                inner.insert_mut(value.clone_ref(py));
-            }
-        }
-        HashTrieSetPy { inner }
-    }
-
-    fn symmetric_difference(&self, other: &Self, py: Python) -> HashTrieSetPy {
-        let mut inner: HashTrieSetSync<Key>;
-        let iter;
-        if self.inner.size() > other.inner.size() {
-            inner = self.inner.clone();
-            iter = other.inner.iter();
-        } else {
-            inner = other.inner.clone();
-            iter = self.inner.iter();
-        }
-        for value in iter {
-            if inner.contains(value) {
+    fn difference(&self, other: &Self) -> PyResult<HashTrieSetPy> {
+        catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            for value in other.inner.iter() {
                 inner.remove_mut(value);
-            } else {
-                inner.insert_mut(value.clone_ref(py));
             }
-        }
-        HashTrieSetPy { inner }
+            HashTrieSetPy { inner }
+        })
     }
 
-    fn union(&self, other: &Self, py: Python) -> HashTrieSetPy {
-        let mut inner: HashTrieSetSync<Key>;
-        let iter;
-        if self.inner.size() > other.inner.size() {
-            inner = self.inner.clone();
-            iter = other.inner.iter();
-        } else {
-            inner = other.inner.clone();
-            iter = self.inner.iter();
-        }
-        for value in iter {
-            inner.insert_mut(value.clone_ref(py));
-        }
-        HashTrieSetPy { inner }
+    fn intersection(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        catch_key_err(|| {
+            let mut inner: HashTrieSetSync<Key> = HashTrieSet::new_sync();
+            let larger: &HashTrieSetSync<Key>;
+            let iter;
+            if self.inner.size() > other.inner.size() {
+                larger = &self.inner;
+                iter = other.inner.iter();
+            } else {
+                larger = &other.inner;
+                iter = self.inner.iter();
+            }
+            for value in iter {
+                if larger.contains(value) {
+                    inner.insert_mut(value.clone_ref(py));
+                }
+            }
+            HashTrieSetPy { inner }
+        })
+    }
+
+    fn symmetric_difference(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        catch_key_err(|| {
+            let mut inner: HashTrieSetSync<Key>;
+            let iter;
+            if self.inner.size() > other.inner.size() {
+                inner = self.inner.clone();
+                iter = other.inner.iter();
+            } else {
+                inner = other.inner.clone();
+                iter = self.inner.iter();
+            }
+            for value in iter {
+                if inner.contains(value) {
+                    inner.remove_mut(value);
+                } else {
+                    inner.insert_mut(value.clone_ref(py));
+                }
+            }
+            HashTrieSetPy { inner }
+        })
+    }
+
+    fn union(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        catch_key_err(|| {
+            let mut inner: HashTrieSetSync<Key>;
+            let iter;
+            if self.inner.size() > other.inner.size() {
+                inner = self.inner.clone();
+                iter = other.inner.iter();
+            } else {
+                inner = other.inner.clone();
+                iter = self.inner.iter();
+            }
+            for value in iter {
+                inner.insert_mut(value.clone_ref(py));
+            }
+            HashTrieSetPy { inner }
+        })
     }
 
     #[pyo3(signature = (*iterables))]
     fn update(&self, iterables: Bound<'_, PyTuple>) -> PyResult<HashTrieSetPy> {
-        let mut inner = self.inner.clone();
-        for each in iterables {
-            let iter = each.try_iter()?;
-            for value in iter {
-                inner.insert_mut(Key::extract(value?.as_borrowed())?);
+        try_catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            for each in iterables {
+                let iter = each.try_iter()?;
+                for value in iter {
+                    inner.insert_mut(Key::extract(value?.as_borrowed())?);
+                }
             }
-        }
-        Ok(HashTrieSetPy { inner })
+            Ok(HashTrieSetPy { inner })
+        })
     }
 }
 
@@ -1102,10 +1173,14 @@ impl SetIterator {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<Key> {
-        let first = slf.inner.iter().next()?.clone_ref(slf.py());
-        slf.inner = slf.inner.remove(&first);
-        Some(first)
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<Key>> {
+        let Some(first) = slf.inner.iter().next() else {
+            return Ok(None);
+        };
+        let first = first.clone_ref(slf.py());
+        let next = catch_key_err(|| slf.inner.remove(&first))?;
+        slf.inner = next;
+        Ok(Some(first))
     }
 }
 

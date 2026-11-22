@@ -770,3 +770,38 @@ def test_key_equality_uses_rich_comparison():
     k1, k2 = TruthyEqKey(), TruthyEqKey()
     assert HashTrieMap({k1: "a"})[k2] == "a"
     assert HashTrieMap({k1: "a"}) == HashTrieMap({k2: "a"})
+
+
+def test_key_comparison_errors_propagate():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("key comparison failed")
+
+    k1, k2 = BadKey(), BadKey()
+    m1 = HashTrieMap({k1: 1})
+    m2 = HashTrieMap({k2: 1})
+
+    operations = [
+        lambda: k2 in m1,
+        lambda: m1[k2],
+        lambda: m1.get(k2),
+        lambda: m1.insert(k2, 2),
+        lambda: m1.remove(k2),
+        lambda: m1.discard(k2),
+        lambda: m1 == m2,
+        lambda: m1 != m2,
+        lambda: HashTrieMap([(k1, 1), (k2, 2)]),
+        lambda: HashTrieMap.fromkeys([k1, k2]),
+        lambda: m1.update({k2: 2}),
+        lambda: k2 in m1.keys(),
+        lambda: (k2, 1) in m1.items(),
+        lambda: m1.keys() == {k2},
+    ]
+    for op in operations:
+        with pytest.raises(ValueError, match="key comparison failed"):
+            op()
+
+    assert m1[k1] == 1

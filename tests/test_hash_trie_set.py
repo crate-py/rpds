@@ -296,3 +296,37 @@ def test_element_equality_uses_rich_comparison():
     k1, k2 = TruthyEqKey(), TruthyEqKey()
     assert k2 in HashTrieSet([k1])
     assert HashTrieSet([k1]) == HashTrieSet([k2])
+
+
+def test_element_comparison_errors_propagate():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("element comparison failed")
+
+    k1, k2 = BadKey(), BadKey()
+    s1 = HashTrieSet([k1])
+    s2 = HashTrieSet([k2])
+
+    operations = [
+        lambda: k2 in s1,
+        lambda: s1.insert(k2),
+        lambda: s1.remove(k2),
+        lambda: s1.discard(k2),
+        lambda: s1 == s2,
+        lambda: s1 != s2,
+        lambda: s1 == {k2},
+        lambda: s1 | s2,
+        lambda: s1 & s2,
+        lambda: s1 - s2,
+        lambda: s1 ^ s2,
+        lambda: s1.update([k2]),
+        lambda: HashTrieSet([k1, k2]),
+    ]
+    for op in operations:
+        with pytest.raises(ValueError, match="element comparison failed"):
+            op()
+
+    assert k1 in s1
