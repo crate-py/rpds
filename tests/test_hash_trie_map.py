@@ -28,7 +28,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 
 from collections import abc
-from operator import methodcaller
+from operator import eq, ge, gt, le, lt, methodcaller, ne
 import pickle
 import sysconfig
 
@@ -214,9 +214,10 @@ def test_map_does_not_hash_values_on_second_hash_invocation():
         hash(x)
 
 
-def test_equal():
-    x = HashTrieMap(a=1, b=2, c=3)
-    y = HashTrieMap(a=1, b=2, c=3)
+@pytest.mark.parametrize("values", [{}, {"a": 1, "b": 2, "c": 3}])
+def test_equal(values):
+    x = HashTrieMap(values)
+    y = HashTrieMap(values)
 
     assert x == y
     assert not (x != y)
@@ -567,3 +568,85 @@ def test_update_with_iterable_of_kvs():
             "5": 6,
         },
     )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        ({"a": None}, {"b": None}),
+        ({"a": 1, "b": None}, {"a": 1, "c": None}),
+        ({"a": 1, "b": 2}, {"a": 1, "b": 3}),
+    ],
+)
+def test_unequal_maps_with_equal_lengths(left, right):
+    x, y = HashTrieMap(left), HashTrieMap(right)
+
+    assert not (x == y)
+    assert x != y
+    assert not (y == x)
+    assert y != x
+
+
+@pytest.mark.parametrize("compare", [eq, ne])
+def test_value_comparison_errors_propagate(compare):
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("value comparison failed")
+
+    left, right = {"a": BadEquality()}, {"a": object()}
+    for factory in [dict, HashTrieMap]:
+        with pytest.raises(ValueError, match="value comparison failed"):
+            compare(factory(left), factory(right))
+
+
+def test_inequality_uses_value_equality():
+    class AlwaysBoth:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return True
+
+    class NeverEither:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return False
+
+        def __ne__(self, other):
+            return False
+
+    for factory in [dict, HashTrieMap]:
+        x, y = factory(a=AlwaysBoth()), factory(a=AlwaysBoth())
+        assert x == y
+        assert not (x != y)
+
+        x, y = factory(a=NeverEither()), factory(a=NeverEither())
+        assert not (x == y)
+        assert x != y
+
+
+@pytest.mark.parametrize("compare", [lt, le, gt, ge])
+def test_ordering_comparisons_are_not_supported(compare):
+    with pytest.raises(TypeError):
+        compare(HashTrieMap(a=1), HashTrieMap(a=2))
+
+
+def test_comparison_reflects_for_other_types():
+    class AlwaysEqual:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    m = HashTrieMap(a=1)
+    other = AlwaysEqual()
+    assert m == other
+    assert not (m != other)

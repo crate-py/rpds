@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyIndexError, PyTypeError};
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyDict, PyIterator, PyTuple, PyType};
+use pyo3::types::{PyBool, PyDict, PyIterator, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping, types::PyTupleMethods};
 use pyo3::{prelude::*, BoundObject, PyTypeInfo};
 use rpds::{
@@ -83,6 +83,23 @@ impl<'py> FromPyObject<'_, 'py> for Key {
 #[pyclass(name = "HashTrieMap", module = "rpds", frozen, mapping)]
 struct HashTrieMapPy {
     inner: HashTrieMapSync<Key, Py<PyAny>>,
+}
+
+impl HashTrieMapPy {
+    fn eq_map(&self, other: &Self, py: Python<'_>) -> PyResult<bool> {
+        if self.inner.size() != other.inner.size() {
+            return Ok(false);
+        }
+        for (key, value) in self.inner.iter() {
+            let Some(other_value) = other.inner.get(key) else {
+                return Ok(false);
+            };
+            if !value.bind(py).eq(other_value)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
 }
 
 impl From<HashTrieMapSync<Key, Py<PyAny>>> for HashTrieMapPy {
@@ -175,37 +192,14 @@ impl HashTrieMapPy {
         )
     }
 
-    fn __richcmp__<'py>(
-        &self,
-        other: &Self,
-        op: CompareOp,
-        py: Python<'py>,
-    ) -> PyResult<Py<PyAny>> {
-        match op {
-            CompareOp::Eq => (self.inner.size() == other.inner.size()
-                && self
-                    .inner
-                    .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                    .map(|(v1, v2)| v1.bind(py).eq(v2))
-                    .all(|r| r.unwrap_or(false)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            CompareOp::Ne => (self.inner.size() != other.inner.size()
-                || self
-                    .inner
-                    .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                    .map(|(v1, v2)| v1.bind(py).ne(v2))
-                    .all(|r| r.unwrap_or(true)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            _ => Ok(py.NotImplemented()),
-        }
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let negate = match op {
+            CompareOp::Eq => false,
+            CompareOp::Ne => true,
+            _ => return Ok(py.NotImplemented()),
+        };
+        let equal = self.eq_map(other, py)?;
+        Ok(PyBool::new(py, equal ^ negate).into_any().unbind())
     }
 
     fn __hash__(&self, py: Python) -> PyResult<isize> {
