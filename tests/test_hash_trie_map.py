@@ -674,3 +674,31 @@ def test_comparison_compares_distinct_nan_values():
         x, y = factory(a=left), factory(a=right)
         assert not (x == y)
         assert x != y
+
+
+def test_comparison_short_circuits_shared_root():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("shared-root keys must not be compared")
+
+    class BadValue:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("shared-root values must not be compared")
+
+    for key in [BadKey(), float("nan")]:
+        absent = 0 if hash(key) != 0 else 1
+        m = HashTrieMap({key: BadValue()})
+        discarded = m.discard(absent)
+        updated = m.update()
+        assert discarded is not m
+        assert updated is not m
+        for other in [m, discarded, updated]:
+            assert m == other
+            assert not (m != other)
+            assert other == m
+            assert not (other != m)

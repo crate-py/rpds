@@ -87,8 +87,15 @@ struct HashTrieMapPy {
 
 impl HashTrieMapPy {
     fn eq_map(&self, other: &Self, py: Python<'_>) -> PyResult<bool> {
-        if self.inner.size() != other.inner.size() {
+        if self.inner.ptr_eq(&other.inner) {
+            return Ok(true);
+        }
+        let size = self.inner.size();
+        if size != other.inner.size() {
             return Ok(false);
+        }
+        if size == 0 {
+            return Ok(true);
         }
         for (key, value) in self.inner.iter() {
             let Some(other_value) = other.inner.get(key) else {
