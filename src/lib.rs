@@ -181,31 +181,32 @@ impl HashTrieMapPy {
         op: CompareOp,
         py: Python<'py>,
     ) -> PyResult<Py<PyAny>> {
-        match op {
-            CompareOp::Eq => (self.inner.size() == other.inner.size()
-                && self
-                    .inner
-                    .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                    .map(|(v1, v2)| v1.bind(py).eq(v2))
-                    .all(|r| r.unwrap_or(false)))
+        let equal = || -> PyResult<bool> {
+            if self.inner.size() != other.inner.size() {
+                return Ok(false);
+            }
+            for (key, value) in self.inner.iter() {
+                let Some(other_value) = other.inner.get(key) else {
+                    return Ok(false);
+                };
+                let value = value.bind(py);
+                let other_value = other_value.bind(py);
+                if !value.is(other_value) && !value.eq(other_value)? {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        };
+        let result = match op {
+            CompareOp::Eq => equal()?,
+            CompareOp::Ne => !equal()?,
+            _ => return Ok(py.NotImplemented()),
+        };
+        result
             .into_pyobject(py)
             .map_err(Into::into)
             .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            CompareOp::Ne => (self.inner.size() != other.inner.size()
-                || self
-                    .inner
-                    .iter()
-                    .map(|(k1, v1)| (v1, other.inner.get(k1)))
-                    .map(|(v1, v2)| v1.bind(py).ne(v2))
-                    .all(|r| r.unwrap_or(true)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            _ => Ok(py.NotImplemented()),
-        }
+            .map(BoundObject::unbind)
     }
 
     fn __hash__(&self, py: Python) -> PyResult<isize> {

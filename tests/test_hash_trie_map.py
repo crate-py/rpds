@@ -28,7 +28,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 
 from collections import abc
-from operator import methodcaller
+from operator import eq, methodcaller, ne
 import pickle
 import sysconfig
 
@@ -214,9 +214,10 @@ def test_map_does_not_hash_values_on_second_hash_invocation():
         hash(x)
 
 
-def test_equal():
-    x = HashTrieMap(a=1, b=2, c=3)
-    y = HashTrieMap(a=1, b=2, c=3)
+@pytest.mark.parametrize("values", [{}, {"a": 1, "b": 2, "c": 3}])
+def test_equal(values):
+    x = HashTrieMap(values)
+    y = HashTrieMap(values)
 
     assert x == y
     assert not (x != y)
@@ -567,3 +568,72 @@ def test_update_with_iterable_of_kvs():
             "5": 6,
         },
     )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        ({"left": None}, {"right": None}),
+        ({"a": 1, "b": 2}, {"a": 1, "b": 3}),
+    ],
+)
+def test_unequal_maps_with_equal_lengths(left, right):
+    assert left != right
+    x, y = HashTrieMap(left), HashTrieMap(right)
+
+    assert not (x == y)
+    assert x != y
+    assert not (y == x)
+    assert y != x
+
+
+@pytest.mark.parametrize("compare", [eq, ne])
+def test_value_comparison_errors_propagate(compare):
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("value comparison failed")
+
+    left, right = {"a": BadEquality()}, {"a": object()}
+    for factory in [dict, HashTrieMap]:
+        with pytest.raises(ValueError, match="value comparison failed"):
+            compare(factory(left), factory(right))
+
+
+def test_inequality_uses_value_equality():
+    class Value:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return True
+
+    left, right = {"a": Value()}, {"a": Value()}
+    for factory in [dict, HashTrieMap]:
+        x, y = factory(left), factory(right)
+        assert x == y
+        assert not (x != y)
+
+
+def test_comparison_preserves_identical_values():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical values must not be compared")
+
+    for value in [BadEquality(), float("nan")]:
+        for factory in [dict, HashTrieMap]:
+            x, y = factory(a=value), factory(a=value)
+            assert x == y
+            assert not (x != y)
+
+
+def test_comparison_preserves_distinct_nan_values():
+    for factory in [dict, HashTrieMap]:
+        x, y = factory(a=float("nan")), factory(a=float("nan"))
+        assert not (x == y)
+        assert x != y
