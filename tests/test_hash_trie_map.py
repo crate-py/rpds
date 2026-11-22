@@ -852,3 +852,75 @@ def test_keys_comparison_reflects_and_fast_paths():
     assert bkeys >= other_bkeys
     assert not (bkeys < other_bkeys)
     assert not (bkeys > other_bkeys)
+
+
+@pytest.mark.parametrize("compare", [lt, le, gt, ge])
+@pytest.mark.parametrize("other", [[(1, 2)], ((1, 2),), {1: 2}, 1])
+def test_items_ordering_against_non_set_raises_type_error(compare, other):
+    with pytest.raises(TypeError):
+        compare(HashTrieMap({1: 2}).items(), other)
+
+
+def test_items_membership_and_setlike_with_non_pair_elements():
+    m = HashTrieMap({"a": 1, "b": 2})
+    items = m.items()
+
+    for missing in [1, (), ("a",), ("a", 1, 2), ["a", 1]]:
+        assert missing not in items
+
+    with pytest.raises(TypeError):
+        assert ([], 1) in items
+
+    assert not (items > {1})
+    assert not (items >= {1})
+    assert not (items > {()})
+    assert not (items >= {()})
+    assert not (items > {("a", 1, 2)})
+    assert not (items & {1})
+    assert not (items & {()})
+    assert not (items & {("a", 1, 2)})
+
+
+def test_items_comparison_reflects_and_fast_paths():
+    class AlwaysEqual:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("shared-root keys must not be compared")
+
+    class BadValue:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("shared-root values must not be compared")
+
+    m1 = HashTrieMap({"a": 1})
+    m2 = HashTrieMap({"a": 1, "b": 2})
+    assert m1.items() < m2.items()
+    assert m1.items() <= m2.items()
+    assert m2.items() > m1.items()
+    assert m2.items() >= m1.items()
+    assert not (m1.items() > m2.items())
+    assert not (m2.items() < m1.items())
+    assert m1.items() == AlwaysEqual()
+    assert not (m1.items() != AlwaysEqual())
+
+    bm = HashTrieMap({BadKey(): BadValue()})
+    bitems = bm.items()
+    other_bitems = bm.discard(0).items()
+    assert bitems == other_bitems
+    assert not (bitems != other_bitems)
+    assert bitems <= other_bitems
+    assert bitems >= other_bitems
+    assert not (bitems < other_bitems)
+    assert not (bitems > other_bitems)
