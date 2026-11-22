@@ -27,6 +27,7 @@ Pre-modification, these were MIT licensed, and are copyright:
     OTHER DEALINGS IN THE SOFTWARE.
 """
 
+from operator import eq, ge, gt, le, lt, ne
 import pickle
 
 import pytest
@@ -158,3 +159,95 @@ def test_more_eq():
 
 def test_pickle():
     assert pickle.loads(pickle.dumps(List([1, 2, 3, 4]))) == List([1, 2, 3, 4])
+
+
+@pytest.mark.parametrize("compare", [eq, ne])
+def test_element_comparison_errors_propagate(compare):
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("element comparison failed")
+
+    left, right = [BadEquality()], [object()]
+    for factory in [list, List]:
+        with pytest.raises(ValueError, match="element comparison failed"):
+            compare(factory(left), factory(right))
+
+
+def test_inequality_uses_element_equality():
+    class AlwaysBoth:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return True
+
+    class NeverEither:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return False
+
+        def __ne__(self, other):
+            return False
+
+    for factory in [list, List]:
+        x, y = factory([AlwaysBoth()]), factory([AlwaysBoth()])
+        assert x == y
+        assert not (x != y)
+
+        x, y = factory([NeverEither()]), factory([NeverEither()])
+        assert not (x == y)
+        assert x != y
+
+
+def test_comparison_short_circuits_identical_elements():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical elements must not be compared")
+
+    for value in [BadEquality(), float("nan")]:
+        for factory in [list, List]:
+            x, y = factory([value]), factory([value])
+            assert x == x
+            assert not (x != x)
+            assert x == y
+            assert not (x != y)
+
+
+def test_comparison_compares_distinct_nan_elements():
+    left, right = float("nan"), -float("nan")
+    assert left is not right
+    for factory in [list, List]:
+        x, y = factory([left]), factory([right])
+        assert not (x == y)
+        assert x != y
+
+
+@pytest.mark.parametrize("compare", [lt, le, gt, ge])
+def test_ordering_comparisons_are_not_supported(compare):
+    with pytest.raises(TypeError):
+        compare(List([1]), List([2]))
+
+
+def test_comparison_reflects_for_other_types():
+    class AlwaysEqual:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    seq = List([1])
+    assert not (seq == [1])
+    assert seq != [1]
+    other = AlwaysEqual()
+    assert seq == other
+    assert not (seq != other)

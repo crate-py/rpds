@@ -14,6 +14,44 @@ fn hash_shuffle_bits(h: usize) -> usize {
     ((h ^ 89869747) ^ (h << 16)).wrapping_mul(3644798167)
 }
 
+fn py_eq(left: &Py<PyAny>, right: &Py<PyAny>, py: Python<'_>) -> PyResult<bool> {
+    Ok(left.is(right) || left.bind(py).eq(right)?)
+}
+
+fn richcmp_eq(
+    op: CompareOp,
+    py: Python<'_>,
+    eq: impl FnOnce() -> PyResult<bool>,
+) -> PyResult<Py<PyAny>> {
+    let negate = match op {
+        CompareOp::Eq => false,
+        CompareOp::Ne => true,
+        _ => return Ok(py.NotImplemented()),
+    };
+    Ok(PyBool::new(py, eq()? ^ negate).into_any().unbind())
+}
+
+fn seq_eq<'a>(
+    left_len: usize,
+    right_len: usize,
+    left: impl Iterator<Item = &'a Py<PyAny>>,
+    right: impl Iterator<Item = &'a Py<PyAny>>,
+    py: Python<'_>,
+) -> PyResult<bool> {
+    if left_len != right_len {
+        return Ok(false);
+    }
+    if left_len == 0 {
+        return Ok(true);
+    }
+    for (a, b) in left.zip(right) {
+        if !py_eq(a, b, py)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 #[derive(Debug)]
 struct Key {
     hash: isize,
@@ -101,7 +139,7 @@ impl HashTrieMapPy {
             let Some(other_value) = other.inner.get(key) else {
                 return Ok(false);
             };
-            if !value.is(other_value) && !value.bind(py).eq(other_value)? {
+            if !py_eq(value, other_value, py)? {
                 return Ok(false);
             }
         }
@@ -200,13 +238,7 @@ impl HashTrieMapPy {
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let negate = match op {
-            CompareOp::Eq => false,
-            CompareOp::Ne => true,
-            _ => return Ok(py.NotImplemented()),
-        };
-        let equal = self.eq_map(other, py)?;
-        Ok(PyBool::new(py, equal ^ negate).into_any().unbind())
+        richcmp_eq(op, py, || self.eq_map(other, py))
     }
 
     fn __hash__(&self, py: Python) -> PyResult<isize> {
@@ -1119,31 +1151,18 @@ impl ListPy {
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        match op {
-            CompareOp::Eq => (self.inner.len() == other.inner.len()
-                && self
-                    .inner
-                    .iter()
-                    .zip(other.inner.iter())
-                    .map(|(e1, e2)| e1.bind(py).eq(e2))
-                    .all(|r| r.unwrap_or(false)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            CompareOp::Ne => (self.inner.len() != other.inner.len()
-                || self
-                    .inner
-                    .iter()
-                    .zip(other.inner.iter())
-                    .map(|(e1, e2)| e1.bind(py).ne(e2))
-                    .any(|r| r.unwrap_or(true)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            _ => Ok(py.NotImplemented()),
-        }
+        richcmp_eq(op, py, || {
+            if std::ptr::eq(self, other) {
+                return Ok(true);
+            }
+            seq_eq(
+                self.inner.len(),
+                other.inner.len(),
+                self.inner.iter(),
+                other.inner.iter(),
+                py,
+            )
+        })
     }
 
     fn __hash__(&self, py: Python) -> PyResult<u64> {
@@ -1306,31 +1325,18 @@ impl StackPy {
     }
 
     fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        match op {
-            CompareOp::Eq => (self.inner.size() == other.inner.size()
-                && self
-                    .inner
-                    .iter()
-                    .zip(other.inner.iter())
-                    .map(|(e1, e2)| e1.bind(py).eq(e2))
-                    .all(|r| r.unwrap_or(false)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            CompareOp::Ne => (self.inner.size() != other.inner.size()
-                || self
-                    .inner
-                    .iter()
-                    .zip(other.inner.iter())
-                    .map(|(e1, e2)| e1.bind(py).ne(e2))
-                    .any(|r| r.unwrap_or(true)))
-            .into_pyobject(py)
-            .map_err(Into::into)
-            .map(BoundObject::into_any)
-            .map(BoundObject::unbind),
-            _ => Ok(py.NotImplemented()),
-        }
+        richcmp_eq(op, py, || {
+            if std::ptr::eq(self, other) {
+                return Ok(true);
+            }
+            seq_eq(
+                self.inner.size(),
+                other.inner.size(),
+                self.inner.iter(),
+                other.inner.iter(),
+                py,
+            )
+        })
     }
 
     fn __repr__(&self, py: Python) -> PyResult<String> {
@@ -1453,14 +1459,19 @@ impl QueuePy {
         Ok(ret)
     }
 
-    fn __eq__(&self, other: &Self, py: Python<'_>) -> bool {
-        (self.inner.len() == other.inner.len())
-            && self
-                .inner
-                .iter()
-                .zip(other.inner.iter())
-                .map(|(e1, e2)| e1.bind(py).eq(e2))
-                .all(|r| r.unwrap_or(false))
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        richcmp_eq(op, py, || {
+            if std::ptr::eq(self, other) {
+                return Ok(true);
+            }
+            seq_eq(
+                self.inner.len(),
+                other.inner.len(),
+                self.inner.iter(),
+                other.inner.iter(),
+                py,
+            )
+        })
     }
 
     fn __hash__(&self, py: Python<'_>) -> PyResult<u64> {
@@ -1486,16 +1497,6 @@ impl QueuePy {
             })?;
 
         Ok(hasher.finish())
-    }
-
-    fn __ne__(&self, other: &Self, py: Python<'_>) -> bool {
-        (self.inner.len() != other.inner.len())
-            || self
-                .inner
-                .iter()
-                .zip(other.inner.iter())
-                .map(|(e1, e2)| e1.bind(py).ne(e2))
-                .any(|r| r.unwrap_or(true))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> QueueIterator {
