@@ -365,3 +365,54 @@ def test_ordering_against_other_set_types():
     assert not (s <= HashTrieSet([1, 3]))
     assert not (s > HashTrieSet([3]))
     assert not (s >= HashTrieSet([1, 3]))
+
+
+def test_set_operations_short_circuit_shared_root_and_empty():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("shared-root keys must not be compared")
+
+    s = HashTrieSet([BadKey()])
+    empty = HashTrieSet()
+    clone = s.discard(0)
+
+    for other in [s, clone]:
+        assert (s | other) == s
+        assert (s & other) == s
+        assert (s - other) == empty
+        assert (s ^ other) == empty
+
+    assert (s | empty) == s
+    assert (empty | s) == s
+    assert (s & empty) == empty
+    assert (empty & s) == empty
+    assert (s - empty) == s
+    assert (empty - s) == empty
+    assert (s ^ empty) == s
+    assert (empty ^ s) == s
+
+
+def test_remove_and_discard_compare_element_once():
+    calls = 0
+
+    class CountingKey:
+        def __hash__(self):
+            return 7
+
+        def __eq__(self, other):
+            nonlocal calls
+            calls += 1
+            return isinstance(other, CountingKey)
+
+    s = HashTrieSet([CountingKey()])
+
+    calls = 0
+    assert s.remove(CountingKey()) == HashTrieSet()
+    assert calls == 1
+
+    calls = 0
+    assert s.discard(CountingKey()) == HashTrieSet()
+    assert calls == 1

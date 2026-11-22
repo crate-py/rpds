@@ -427,13 +427,10 @@ impl HashTrieMapPy {
     }
 
     fn discard(&self, key: Key) -> PyResult<HashTrieMapPy> {
-        catch_key_err(|| match self.inner.contains_key(&key) {
-            true => HashTrieMapPy {
-                inner: self.inner.remove(&key),
-            },
-            false => HashTrieMapPy {
-                inner: self.inner.clone(),
-            },
+        catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            inner.remove_mut(&key);
+            HashTrieMapPy { inner }
         })
     }
 
@@ -444,11 +441,13 @@ impl HashTrieMapPy {
     }
 
     fn remove(&self, key: Key) -> PyResult<HashTrieMapPy> {
-        try_catch_key_err(|| match self.inner.contains_key(&key) {
-            true => Ok(HashTrieMapPy {
-                inner: self.inner.remove(&key),
-            }),
-            false => Err(PyKeyError::new_err(key)),
+        try_catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            if inner.remove_mut(&key) {
+                Ok(HashTrieMapPy { inner })
+            } else {
+                Err(PyKeyError::new_err(key))
+            }
         })
     }
 
@@ -1019,26 +1018,35 @@ impl HashTrieSetPy {
     }
 
     fn discard(&self, value: Key) -> PyResult<HashTrieSetPy> {
-        catch_key_err(|| match self.inner.contains(&value) {
-            true => HashTrieSetPy {
-                inner: self.inner.remove(&value),
-            },
-            false => HashTrieSetPy {
-                inner: self.inner.clone(),
-            },
+        catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            inner.remove_mut(&value);
+            HashTrieSetPy { inner }
         })
     }
 
     fn remove(&self, value: Key) -> PyResult<HashTrieSetPy> {
-        try_catch_key_err(|| match self.inner.contains(&value) {
-            true => Ok(HashTrieSetPy {
-                inner: self.inner.remove(&value),
-            }),
-            false => Err(PyKeyError::new_err(value)),
+        try_catch_key_err(|| {
+            let mut inner = self.inner.clone();
+            if inner.remove_mut(&value) {
+                Ok(HashTrieSetPy { inner })
+            } else {
+                Err(PyKeyError::new_err(value))
+            }
         })
     }
 
     fn difference(&self, other: &Self) -> PyResult<HashTrieSetPy> {
+        if self.inner.is_empty() || self.inner.ptr_eq(&other.inner) {
+            return Ok(HashTrieSetPy {
+                inner: HashTrieSet::new_sync(),
+            });
+        }
+        if other.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: self.inner.clone(),
+            });
+        }
         catch_key_err(|| {
             let mut inner = self.inner.clone();
             for value in other.inner.iter() {
@@ -1049,6 +1057,16 @@ impl HashTrieSetPy {
     }
 
     fn intersection(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        if self.inner.ptr_eq(&other.inner) {
+            return Ok(HashTrieSetPy {
+                inner: self.inner.clone(),
+            });
+        }
+        if self.inner.is_empty() || other.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: HashTrieSet::new_sync(),
+            });
+        }
         catch_key_err(|| {
             let mut inner: HashTrieSetSync<Key> = HashTrieSet::new_sync();
             let larger: &HashTrieSetSync<Key>;
@@ -1070,6 +1088,21 @@ impl HashTrieSetPy {
     }
 
     fn symmetric_difference(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        if self.inner.ptr_eq(&other.inner) {
+            return Ok(HashTrieSetPy {
+                inner: HashTrieSet::new_sync(),
+            });
+        }
+        if self.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: other.inner.clone(),
+            });
+        }
+        if other.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: self.inner.clone(),
+            });
+        }
         catch_key_err(|| {
             let mut inner: HashTrieSetSync<Key>;
             let iter;
@@ -1081,9 +1114,7 @@ impl HashTrieSetPy {
                 iter = self.inner.iter();
             }
             for value in iter {
-                if inner.contains(value) {
-                    inner.remove_mut(value);
-                } else {
+                if !inner.remove_mut(value) {
                     inner.insert_mut(value.clone_ref(py));
                 }
             }
@@ -1092,6 +1123,16 @@ impl HashTrieSetPy {
     }
 
     fn union(&self, other: &Self, py: Python) -> PyResult<HashTrieSetPy> {
+        if self.inner.ptr_eq(&other.inner) || other.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: self.inner.clone(),
+            });
+        }
+        if self.inner.is_empty() {
+            return Ok(HashTrieSetPy {
+                inner: other.inner.clone(),
+            });
+        }
         catch_key_err(|| {
             let mut inner: HashTrieSetSync<Key>;
             let iter;

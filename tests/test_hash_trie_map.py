@@ -924,3 +924,26 @@ def test_items_comparison_reflects_and_fast_paths():
     assert bitems >= other_bitems
     assert not (bitems < other_bitems)
     assert not (bitems > other_bitems)
+
+
+def test_remove_and_discard_compare_key_once():
+    calls = 0
+
+    class CountingKey:
+        def __hash__(self):
+            return 7
+
+        def __eq__(self, other):
+            nonlocal calls
+            calls += 1
+            return isinstance(other, CountingKey)
+
+    m = HashTrieMap({CountingKey(): 1})
+
+    calls = 0
+    assert m.remove(CountingKey()) == HashTrieMap()
+    assert calls == 1
+
+    calls = 0
+    assert m.discard(CountingKey()) == HashTrieMap()
+    assert calls == 1
