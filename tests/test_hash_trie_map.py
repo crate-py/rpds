@@ -35,7 +35,7 @@ import sysconfig
 
 import pytest
 
-from rpds import HashTrieMap
+from rpds import HashTrieMap, HashTrieSet
 
 # see https://github.com/python/cpython/issues/127065,
 # remove this when the CPython bug is fixed in a released version
@@ -807,3 +807,48 @@ def test_key_comparison_errors_propagate():
             op()
 
     assert m1[k1] == 1
+
+
+@pytest.mark.parametrize("compare", [lt, le, gt, ge])
+@pytest.mark.parametrize("other", [[1], (1,), {1: 2}, 1])
+def test_keys_ordering_against_non_set_raises_type_error(compare, other):
+    with pytest.raises(TypeError):
+        compare(HashTrieMap({1: 2}).keys(), other)
+
+
+def test_keys_comparison_reflects_and_fast_paths():
+    class AlwaysEqual:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("shared-root keys must not be compared")
+
+    m = HashTrieMap({1: "a", 2: "b"})
+    keys = m.keys()
+    assert keys == HashTrieSet([1, 2])
+    assert keys < HashTrieSet([1, 2, 3])
+    assert keys <= HashTrieSet([1, 2])
+    assert keys > HashTrieSet([1])
+    assert keys >= HashTrieSet([1, 2])
+    assert keys == AlwaysEqual()
+    assert not (keys != AlwaysEqual())
+
+    bm = HashTrieMap({BadKey(): 1})
+    bkeys = bm.keys()
+    other_bkeys = bm.discard(0).keys()
+    assert bkeys == other_bkeys
+    assert not (bkeys != other_bkeys)
+    assert bkeys <= other_bkeys
+    assert bkeys >= other_bkeys
+    assert not (bkeys < other_bkeys)
+    assert not (bkeys > other_bkeys)

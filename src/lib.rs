@@ -539,7 +539,7 @@ impl ItemsIterator {
     }
 }
 
-#[pyclass(module = "rpds")]
+#[pyclass(module = "rpds", frozen)]
 struct KeysView {
     inner: HashTrieMapSync<Key, Py<PyAny>>,
 }
@@ -550,77 +550,65 @@ impl KeysView {
         catch_key_err(|| self.inner.contains_key(&key))
     }
 
-    fn __eq__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
-            return Ok(false);
+    fn __richcmp__(
+        &self,
+        other: &Bound<'_, PyAny>,
+        op: CompareOp,
+        py: Python<'_>,
+    ) -> PyResult<Py<PyAny>> {
+        if let Ok(other) = other.cast::<KeysView>() {
+            let other = other.get();
+            if self.inner.ptr_eq(&other.inner) {
+                let result = matches!(op, CompareOp::Eq | CompareOp::Le | CompareOp::Ge);
+                return Ok(PyBool::new(py, result).into_any().unbind());
+            }
+            return set_richcmp(
+                op,
+                self.inner.size(),
+                other.inner.size(),
+                py,
+                || catch_key_err(|| self.inner.keys().all(|key| other.inner.contains_key(key))),
+                || catch_key_err(|| other.inner.keys().all(|key| self.inner.contains_key(key))),
+            );
         }
-        try_catch_key_err(|| {
-            for each in other.try_iter()? {
-                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                    return Ok(false);
+        if let Ok(other) = other.cast::<HashTrieSetPy>() {
+            let other = other.get();
+            return set_richcmp(
+                op,
+                self.inner.size(),
+                other.inner.size(),
+                py,
+                || catch_key_err(|| self.inner.keys().all(|key| other.inner.contains(key))),
+                || catch_key_err(|| other.inner.iter().all(|key| self.inner.contains_key(key))),
+            );
+        }
+        if !is_py_set(other, py)? {
+            return Ok(py.NotImplemented());
+        }
+        set_richcmp(
+            op,
+            self.inner.size(),
+            other.len()?,
+            py,
+            || {
+                for each in self.inner.keys() {
+                    if !other.contains(each.inner.bind(py))? {
+                        return Ok(false);
+                    }
                 }
-            }
-            Ok(true)
-        })
-    }
-
-    fn __lt__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? <= slf.inner.size() {
-            return Ok(false);
-        }
-
-        for each in slf.inner.keys() {
-            if !other.contains(each.inner.clone_ref(slf.py()))? {
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-
-    fn __le__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? < slf.inner.size() {
-            return Ok(false);
-        }
-
-        for each in slf.inner.keys() {
-            if !other.contains(each.inner.clone_ref(slf.py()))? {
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-
-    fn __gt__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? >= slf.inner.size() {
-            return Ok(false);
-        }
-        try_catch_key_err(|| {
-            for each in other.try_iter()? {
-                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                    return Ok(false);
-                }
-            }
-            Ok(true)
-        })
-    }
-
-    fn __ge__(slf: PyRef<'_, Self>, other: &Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? > slf.inner.size() {
-            return Ok(false);
-        }
-        try_catch_key_err(|| {
-            for each in other.try_iter()? {
-                if !slf.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
-                    return Ok(false);
-                }
-            }
-            Ok(true)
-        })
+                Ok(true)
+            },
+            || {
+                try_catch_key_err(|| {
+                    for each in other.try_iter()? {
+                        if !self.inner.contains_key(&Key::extract(each?.as_borrowed())?) {
+                            return Ok(false);
+                        }
+                    }
+                    Ok(true)
+                })
+            },
+        )
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> KeysIterator {
