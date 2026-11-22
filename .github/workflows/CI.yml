@@ -72,7 +72,10 @@ jobs:
   manylinux:
     name: Build manylinux wheels
     needs: test
-    runs-on: ubuntu-latest
+    # ubuntu-26.04 (current ubuntu-latest) ships Docker 29.4.2, whose seccomp
+    # profile blocks socketcall(2) and breaks DNS in i386 glibc containers:
+    # https://github.com/actions/runner-images/issues/14790
+    runs-on: ${{ matrix.target == 'x86' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     timeout-minutes: 60
 
     strategy:
