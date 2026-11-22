@@ -215,23 +215,45 @@ impl From<HashTrieMapSync<Key, Py<PyAny>>> for HashTrieMapPy {
     }
 }
 
+fn insert_map_entries(
+    inner: &mut HashTrieMapSync<Key, Py<PyAny>>,
+    ob: Borrowed<'_, '_, PyAny>,
+) -> PyResult<()> {
+    if let Ok(map) = ob.cast::<HashTrieMapPy>() {
+        let other = &map.get().inner;
+        if inner.is_empty() {
+            *inner = other.clone();
+        } else if !inner.ptr_eq(other) {
+            for (k, v) in other {
+                inner.insert_mut(k.clone_ref(ob.py()), v.clone_ref(ob.py()));
+            }
+        }
+    } else if let Ok(mapping) = ob.cast::<PyMapping>() {
+        for each in mapping.items()?.iter() {
+            let (k, v): (Key, Py<PyAny>) = each.extract()?;
+            inner.insert_mut(k, v);
+        }
+    } else {
+        for each in ob.try_iter()? {
+            let (k, v): (Key, Py<PyAny>) = each?.extract()?;
+            inner.insert_mut(k, v);
+        }
+    }
+    Ok(())
+}
+
 impl<'py> FromPyObject<'_, 'py> for HashTrieMapPy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(map) = ob.cast::<HashTrieMapPy>() {
+            return Ok(HashTrieMapPy {
+                inner: map.get().inner.clone(),
+            });
+        }
         try_catch_key_err(|| {
             let mut ret = HashTrieMap::new_sync();
-            if let Ok(mapping) = ob.cast::<PyMapping>() {
-                for each in mapping.items()?.iter() {
-                    let (k, v): (Key, Py<PyAny>) = each.extract()?;
-                    ret.insert_mut(k, v);
-                }
-            } else {
-                for each in ob.try_iter()? {
-                    let (k, v) = each?.extract()?;
-                    ret.insert_mut(k, v);
-                }
-            }
+            insert_map_entries(&mut ret, ob)?;
             Ok(HashTrieMapPy { inner: ret })
         })
     }
@@ -460,14 +482,11 @@ impl HashTrieMapPy {
         try_catch_key_err(|| {
             let mut inner = self.inner.clone();
             for value in maps {
-                let map = HashTrieMapPy::extract(value.as_borrowed())?;
-                for (k, v) in &map.inner {
-                    inner.insert_mut(k.clone_ref(value.py()), v.clone_ref(value.py()));
-                }
+                insert_map_entries(&mut inner, value.as_borrowed())?;
             }
             if let Some(kwds) = kwds {
                 for (k, v) in kwds {
-                    inner.insert_mut(Key::extract(k.as_borrowed())?, v.extract()?);
+                    inner.insert_mut(Key::extract(k.as_borrowed())?, v.unbind());
                 }
             }
             Ok(HashTrieMapPy { inner })
@@ -868,6 +887,11 @@ impl<'py> FromPyObject<'_, 'py> for HashTrieSetPy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(set) = ob.cast::<HashTrieSetPy>() {
+            return Ok(HashTrieSetPy {
+                inner: set.get().inner.clone(),
+            });
+        }
         try_catch_key_err(|| {
             let mut ret = HashTrieSet::new_sync();
             for each in ob.try_iter()? {
@@ -1155,9 +1179,27 @@ impl HashTrieSetPy {
         try_catch_key_err(|| {
             let mut inner = self.inner.clone();
             for each in iterables {
-                let iter = each.try_iter()?;
-                for value in iter {
-                    inner.insert_mut(Key::extract(value?.as_borrowed())?);
+                if let Ok(set) = each.cast::<HashTrieSetPy>() {
+                    let other = &set.get().inner;
+                    if inner.is_empty() {
+                        inner = other.clone();
+                    } else if !inner.ptr_eq(other) {
+                        if other.size() > inner.size() {
+                            let mut merged = other.clone();
+                            for value in &inner {
+                                merged.insert_mut(value.clone_ref(each.py()));
+                            }
+                            inner = merged;
+                        } else {
+                            for value in other {
+                                inner.insert_mut(value.clone_ref(each.py()));
+                            }
+                        }
+                    }
+                } else {
+                    for value in each.try_iter()? {
+                        inner.insert_mut(Key::extract(value?.as_borrowed())?);
+                    }
                 }
             }
             Ok(HashTrieSetPy { inner })
@@ -1203,6 +1245,11 @@ impl<'py> FromPyObject<'_, 'py> for ListPy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(list) = ob.cast::<ListPy>() {
+            return Ok(ListPy {
+                inner: list.get().inner.clone(),
+            });
+        }
         let mut ret = List::new_sync();
         let reversed = PyModule::import(ob.py(), "builtins")?.getattr("reversed")?;
         let rob: Bound<'_, PyIterator> = reversed.call1((ob,))?.try_iter()?;
@@ -1530,6 +1577,11 @@ impl<'py> FromPyObject<'_, 'py> for QueuePy {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(queue) = ob.cast::<QueuePy>() {
+            return Ok(QueuePy {
+                inner: queue.get().inner.clone(),
+            });
+        }
         let mut ret = Queue::new_sync();
         for each in ob.try_iter()? {
             ret.enqueue_mut(each?.extract()?);

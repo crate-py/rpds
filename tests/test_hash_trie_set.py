@@ -336,6 +336,7 @@ def test_element_comparison_errors_propagate():
         lambda: s1 - s2,
         lambda: s1 ^ s2,
         lambda: s1.update([k2]),
+        lambda: s1.update(s2),
         lambda: HashTrieSet([k1, k2]),
     ]
     for op in operations:
@@ -416,3 +417,71 @@ def test_remove_and_discard_compare_element_once():
     calls = 0
     assert s.discard(CountingKey()) == HashTrieSet()
     assert calls == 1
+
+
+def test_copy_and_update_fast_paths():
+    hash_calls = 0
+    eq_calls = 0
+
+    class CountingKey:
+        def __hash__(self):
+            nonlocal hash_calls
+            hash_calls += 1
+            return 1
+
+        def __eq__(self, other):
+            nonlocal eq_calls
+            eq_calls += 1
+            return self is other
+
+    k1, k2 = CountingKey(), CountingKey()
+    s = HashTrieSet([k1])
+
+    hash_calls = 0
+    eq_calls = 0
+
+    copied = HashTrieSet(s)
+    assert copied is not s
+    assert copied == s
+    assert hash_calls == 0
+    assert eq_calls == 0
+    assert copied.insert(0) == s.insert(0)
+    assert 0 not in s
+
+    hash_calls = 0
+    eq_calls = 0
+
+    from_empty = HashTrieSet().update(s)
+    assert from_empty == s
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    self_updated = s.update(s)
+    assert self_updated == s
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    empty_updated = s.update(HashTrieSet())
+    assert empty_updated == s
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    merged = HashTrieSet([0]).update(s)
+    assert hash_calls == 0
+    assert eq_calls == 0
+    assert merged == HashTrieSet([0, k1])
+
+    larger = HashTrieSet([k1, 2, 3])
+    hash_calls = 0
+    eq_calls = 0
+    merged_larger = HashTrieSet([0]).update(larger)
+    assert hash_calls == 0
+    assert eq_calls == 0
+    assert merged_larger == HashTrieSet([0, k1, 2, 3])
+
+    s2 = HashTrieSet([k2])
+    hash_calls = 0
+    both = s.update(s2)
+    assert hash_calls == 0
+    assert k1 in both
+    assert k2 in both

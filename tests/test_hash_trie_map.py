@@ -798,6 +798,7 @@ def test_key_comparison_errors_propagate():
         lambda: HashTrieMap([(k1, 1), (k2, 2)]),
         lambda: HashTrieMap.fromkeys([k1, k2]),
         lambda: m1.update({k2: 2}),
+        lambda: m1.update(m2),
         lambda: k2 in m1.keys(),
         lambda: (k2, 1) in m1.items(),
         lambda: m1.keys() == {k2},
@@ -947,3 +948,78 @@ def test_remove_and_discard_compare_key_once():
     calls = 0
     assert m.discard(CountingKey()) == HashTrieMap()
     assert calls == 1
+
+
+def test_copy_and_update_fast_paths():
+    hash_calls = 0
+    eq_calls = 0
+
+    class CountingKey:
+        def __hash__(self):
+            nonlocal hash_calls
+            hash_calls += 1
+            return 1
+
+        def __eq__(self, other):
+            nonlocal eq_calls
+            eq_calls += 1
+            return self is other
+
+    class BadValue:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("shared-root values must not be compared")
+
+    k1, k2 = CountingKey(), CountingKey()
+    value = BadValue()
+    m = HashTrieMap({k1: value})
+
+    hash_calls = 0
+    eq_calls = 0
+
+    copied = HashTrieMap(m)
+    assert copied is not m
+    assert copied == m
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    with_kwds = HashTrieMap(m, extra=2)
+    assert with_kwds["extra"] == 2
+    assert with_kwds[k1] is value
+    assert "extra" not in m
+
+    hash_calls = 0
+    eq_calls = 0
+
+    from_empty = HashTrieMap().update(m)
+    assert from_empty == m
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    self_updated = m.update(m)
+    assert self_updated == m
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    empty_updated = m.update(HashTrieMap())
+    assert empty_updated == m
+    assert hash_calls == 0
+    assert eq_calls == 0
+
+    merged = HashTrieMap({0: "zero"}).update(m)
+    assert hash_calls == 0
+    assert eq_calls == 0
+    assert merged[0] == "zero"
+    assert merged[k1] is value
+
+    m2 = HashTrieMap({k2: "two"})
+    hash_calls = 0
+    both = m.update(m2)
+    assert hash_calls == 0
+    assert both[k1] is value
+    assert both[k2] == "two"
+
+    assert HashTrieMap({1: "a", 2: "b"}).update(
+        HashTrieMap({2: "c", 3: "d"}),
+    ) == HashTrieMap({1: "a", 2: "c", 3: "d"})

@@ -251,3 +251,23 @@ def test_comparison_reflects_for_other_types():
     other = AlwaysEqual()
     assert seq == other
     assert not (seq != other)
+
+
+def test_copy_from_existing_list():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical elements must not be compared")
+
+    lst = List([1, 2, 3])
+    copied = List(lst)
+    assert copied is not lst
+    assert copied == lst
+    assert copied.push_front(0) == List([0, 1, 2, 3])
+    assert lst == List([1, 2, 3])
+    assert List(List()) == List()
+    assert List(lst, lst) == List([lst, lst])
+
+    bad = List([BadEquality()])
+    assert List(bad) == bad

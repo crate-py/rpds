@@ -238,3 +238,24 @@ def test_comparison_reflects_for_other_types():
     other = AlwaysEqual()
     assert seq == other
     assert not (seq != other)
+
+
+def test_copy_from_existing_queue():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical elements must not be compared")
+
+    q = Queue([1, 2, 3]).dequeue().enqueue(4)
+    copied = Queue(q)
+    assert copied is not q
+    assert copied == q
+    assert list(copied) == [2, 3, 4]
+    assert copied.enqueue(5) == Queue([2, 3, 4, 5])
+    assert q == Queue([2, 3, 4])
+    assert Queue(Queue()) == Queue()
+    assert Queue(q, q) == Queue([q, q])
+
+    bad = Queue([BadEquality()])
+    assert Queue(bad) == bad
