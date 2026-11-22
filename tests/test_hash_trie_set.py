@@ -28,6 +28,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 
 from collections import abc
+from fractions import Fraction
 import pickle
 
 import pytest
@@ -259,3 +260,39 @@ def test_comparison_short_circuits_shared_root():
             assert not (s != other)
             assert other == s
             assert not (other != s)
+
+
+def test_element_identity_short_circuits_comparison():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("identical elements must not be compared")
+
+    for key in [BadKey(), float("nan")]:
+        s1 = HashTrieSet([key])
+        s2 = HashTrieSet([key])
+        assert key in s1
+        assert s1 == s2
+        assert not (s1 != s2)
+        assert s1.insert(key) == s2
+        assert s1.remove(key) == HashTrieSet()
+
+
+def test_element_equality_uses_rich_comparison():
+    class TruthyEqKey:
+        def __hash__(self):
+            return 42
+
+        def __eq__(self, other):
+            return 1 if isinstance(other, TruthyEqKey) else 0
+
+    s = HashTrieSet([1])
+    assert Fraction(1, 1) in s
+    assert s == HashTrieSet([Fraction(1, 1)])
+    assert HashTrieSet([Fraction(1, 1)]) == s
+
+    k1, k2 = TruthyEqKey(), TruthyEqKey()
+    assert k2 in HashTrieSet([k1])
+    assert HashTrieSet([k1]) == HashTrieSet([k2])

@@ -28,6 +28,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 """
 
 from collections import abc
+from fractions import Fraction
 from operator import eq, ge, gt, le, lt, methodcaller, ne
 import pickle
 import sysconfig
@@ -720,3 +721,52 @@ def test_items_contains_short_circuits_identical_values():
     assert left is not right
     for factory in [dict, HashTrieMap]:
         assert ("a", right) not in factory(a=left).items()
+
+
+def test_key_identity_short_circuits_comparison():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("identical keys must not be compared")
+
+    for key in [BadKey(), float("nan")]:
+        m1 = HashTrieMap({key: 1})
+        m2 = HashTrieMap({key: 1})
+        assert key in m1
+        assert m1[key] == 1
+        assert m1.get(key) == 1
+        assert m1 == m2
+        assert not (m1 != m2)
+        assert m1.insert(key, 2) == HashTrieMap({key: 2})
+        assert m1.remove(key) == HashTrieMap()
+
+
+def test_distinct_nan_keys_are_not_equal():
+    left, right = float("nan"), -float("nan")
+    assert left is not right
+    m1 = HashTrieMap({left: 1})
+    m2 = HashTrieMap({right: 1})
+    assert right not in m1
+    assert m1 != m2
+    assert not (m1 == m2)
+
+
+def test_key_equality_uses_rich_comparison():
+    class TruthyEqKey:
+        def __hash__(self):
+            return 42
+
+        def __eq__(self, other):
+            return 1 if isinstance(other, TruthyEqKey) else 0
+
+    m = HashTrieMap({1: "one"})
+    assert Fraction(1, 1) in m
+    assert m[Fraction(1, 1)] == "one"
+    assert m == HashTrieMap({Fraction(1, 1): "one"})
+    assert HashTrieMap({Fraction(1, 1): "one"}) == m
+
+    k1, k2 = TruthyEqKey(), TruthyEqKey()
+    assert HashTrieMap({k1: "a"})[k2] == "a"
+    assert HashTrieMap({k1: "a"}) == HashTrieMap({k2: "a"})

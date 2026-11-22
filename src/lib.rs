@@ -88,10 +88,16 @@ impl Eq for Key {}
 
 impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
+        if self.inner.is(&other.inner) {
+            return true;
+        }
+        if self.hash != other.hash {
+            return false;
+        }
         Python::attach(|py| {
             self.inner
-                .call_method1(py, "__eq__", (&other.inner,))
-                .and_then(|value| value.extract(py))
+                .bind(py)
+                .eq(&other.inner)
                 .expect("__eq__ failed!")
         })
     }
