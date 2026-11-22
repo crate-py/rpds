@@ -633,7 +633,10 @@ def test_comparison_preserves_identical_values():
 
 
 def test_comparison_preserves_distinct_nan_values():
+    # Opposite signs keep these NaNs distinct on PyPy as well as CPython.
+    left, right = float("nan"), -float("nan")
+    assert left is not right
     for factory in [dict, HashTrieMap]:
-        x, y = factory(a=float("nan")), factory(a=float("nan"))
+        x, y = factory(a=left), factory(a=right)
         assert not (x == y)
         assert x != y
