@@ -94,7 +94,7 @@ impl HashTrieMapPy {
             let Some(other_value) = other.inner.get(key) else {
                 return Ok(false);
             };
-            if !value.bind(py).eq(other_value)? {
+            if !value.is(other_value) && !value.bind(py).eq(other_value)? {
                 return Ok(false);
             }
         }

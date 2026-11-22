@@ -650,3 +650,27 @@ def test_comparison_reflects_for_other_types():
     other = AlwaysEqual()
     assert m == other
     assert not (m != other)
+
+
+def test_comparison_short_circuits_identical_values():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical values must not be compared")
+
+    for value in [BadEquality(), float("nan")]:
+        for factory in [dict, HashTrieMap]:
+            x, y = factory(a=value), factory(a=value)
+            assert x == y
+            assert not (x != y)
+
+
+def test_comparison_compares_distinct_nan_values():
+    # Opposite signs keep these NaNs distinct on PyPy as well as CPython.
+    left, right = float("nan"), -float("nan")
+    assert left is not right
+    for factory in [dict, HashTrieMap]:
+        x, y = factory(a=left), factory(a=right)
+        assert not (x == y)
+        assert x != y
