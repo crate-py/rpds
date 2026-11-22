@@ -15,7 +15,20 @@ fn hash_shuffle_bits(h: usize) -> usize {
 }
 
 fn py_eq(left: &Py<PyAny>, right: &Py<PyAny>, py: Python<'_>) -> PyResult<bool> {
-    Ok(left.is(right) || left.bind(py).eq(right)?)
+    if left.is(right) {
+        return Ok(true);
+    }
+    // Delegate to PyObject_RichCompareBool so both CPython and PyPy apply
+    // Python container identity semantics (including PyPy's value identity for
+    // floats/ints where cpyext may allocate distinct PyObject* proxies) before
+    // invoking __eq__.
+    match unsafe {
+        pyo3::ffi::PyObject_RichCompareBool(left.as_ptr(), right.as_ptr(), pyo3::ffi::Py_EQ)
+    } {
+        1 => Ok(true),
+        0 => Ok(false),
+        _ => Err(PyErr::fetch(py)),
+    }
 }
 
 fn richcmp_eq(
@@ -108,7 +121,7 @@ impl PartialEq for Key {
         if self.hash != other.hash {
             return false;
         }
-        Python::attach(|py| match self.inner.bind(py).eq(&other.inner) {
+        Python::attach(|py| match py_eq(&self.inner, &other.inner, py) {
             Ok(equal) => equal,
             Err(err) => std::panic::resume_unwind(Box::new(err)),
         })

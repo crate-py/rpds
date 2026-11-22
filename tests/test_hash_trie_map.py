@@ -733,9 +733,11 @@ def test_key_identity_short_circuits_comparison():
 
     for key in [BadKey(), float("nan")]:
         m1 = HashTrieMap({key: 1})
-        m2 = HashTrieMap({key: 1})
+        m2 = HashTrieMap.fromkeys([key], 1)
         assert key in m1
+        assert key in m2
         assert m1[key] == 1
+        assert m2[key] == 1
         assert m1.get(key) == 1
         assert m1 == m2
         assert not (m1 != m2)
