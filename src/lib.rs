@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyIndexError, PyTypeError};
 use pyo3::pyclass::CompareOp;
-use pyo3::types::{PyBool, PyDict, PyIterator, PyTuple, PyType};
+use pyo3::types::{PyBool, PyDict, PyFrozenSet, PyIterator, PySet, PyTuple, PyType};
 use pyo3::{exceptions::PyKeyError, types::PyMapping, types::PyTupleMethods};
 use pyo3::{prelude::*, BoundObject, PyTypeInfo};
 use rpds::{
@@ -876,17 +876,33 @@ impl HashTrieSetPy {
         Ok(format!("HashTrieSet({{{}}})", contents.join(", ")))
     }
 
-    fn __eq__(slf: PyRef<'_, Self>, other: Bound<'_, PyAny>, py: Python) -> PyResult<bool> {
-        let abc = PyModule::import(py, "collections.abc")?;
-        if !other.is_instance(&abc.getattr("Set")?)? || other.len()? != slf.inner.size() {
-            return Ok(false);
+    fn __eq__(&self, other: &Bound<'_, PyAny>, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        if let Ok(other) = other.cast::<HashTrieSetPy>() {
+            let other = other.get();
+            let equal = if self.inner.ptr_eq(&other.inner) {
+                true
+            } else {
+                let size = self.inner.size();
+                size == other.inner.size()
+                    && (size == 0 || self.inner.iter().all(|key| other.inner.contains(key)))
+            };
+            return Ok(PyBool::new(py, equal).into_any().unbind());
+        }
+        let is_set = other.is_instance_of::<PySet>()
+            || other.is_instance_of::<PyFrozenSet>()
+            || other.is_instance(&PyModule::import(py, "collections.abc")?.getattr("Set")?)?;
+        if !is_set {
+            return Ok(py.NotImplemented());
+        }
+        if other.len()? != self.inner.size() {
+            return Ok(PyBool::new(py, false).into_any().unbind());
         }
         for each in other.try_iter()? {
-            if !slf.inner.contains(&Key::extract(each?.as_borrowed())?) {
-                return Ok(false);
+            if !self.inner.contains(&Key::extract(each?.as_borrowed())?) {
+                return Ok(PyBool::new(py, false).into_any().unbind());
             }
         }
-        Ok(true)
+        Ok(PyBool::new(py, true).into_any().unbind())
     }
 
     fn __hash__(&self) -> PyResult<isize> {

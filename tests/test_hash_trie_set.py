@@ -218,3 +218,44 @@ def test_lt_le_gt_ge():
     assert HashTrieSet({}) <= {1}
     assert HashTrieSet({1}) > set()
     assert HashTrieSet({1}) >= set()
+
+
+def test_comparison_reflects_for_other_types():
+    class AlwaysEqual:
+        __hash__ = None
+
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    s = HashTrieSet([1, 2])
+    assert s == frozenset([1, 2])
+    assert not (s != frozenset([1, 2]))
+    assert s != frozenset([1, 3])
+    other = AlwaysEqual()
+    assert s == other
+    assert not (s != other)
+
+
+def test_comparison_short_circuits_shared_root():
+    class BadKey:
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            raise ValueError("shared-root keys must not be compared")
+
+    for key in [BadKey(), float("nan")]:
+        absent = 0 if hash(key) != 0 else 1
+        s = HashTrieSet([key])
+        discarded = s.discard(absent)
+        updated = s.update()
+        assert discarded is not s
+        assert updated is not s
+        for other in [s, discarded, updated]:
+            assert s == other
+            assert not (s != other)
+            assert other == s
+            assert not (other != s)
