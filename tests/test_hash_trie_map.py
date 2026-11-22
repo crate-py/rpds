@@ -702,3 +702,21 @@ def test_comparison_short_circuits_shared_root():
             assert not (m != other)
             assert other == m
             assert not (other != m)
+
+
+def test_items_contains_short_circuits_identical_values():
+    class BadEquality:
+        __hash__ = None
+
+        def __eq__(self, other):
+            raise ValueError("identical values must not be compared")
+
+    for value in [BadEquality(), float("nan")]:
+        for factory in [dict, HashTrieMap]:
+            items = factory(a=value).items()
+            assert ("a", value) in items
+
+    left, right = float("nan"), -float("nan")
+    assert left is not right
+    for factory in [dict, HashTrieMap]:
+        assert ("a", right) not in factory(a=left).items()

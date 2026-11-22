@@ -637,7 +637,7 @@ struct ItemViewQuery(Key, Py<PyAny>);
 impl ItemsView {
     fn __contains__(slf: PyRef<'_, Self>, item: ItemViewQuery) -> PyResult<bool> {
         if let Some(value) = slf.inner.get(&item.0) {
-            return item.1.bind(slf.py()).eq(value);
+            return py_eq(value, &item.1, slf.py());
         }
 
         Ok(false)
