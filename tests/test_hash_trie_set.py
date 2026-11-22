@@ -29,6 +29,7 @@ Pre-modification, these were MIT licensed, and are copyright:
 
 from collections import abc
 from fractions import Fraction
+from operator import ge, gt, le, lt
 import pickle
 
 import pytest
@@ -258,8 +259,16 @@ def test_comparison_short_circuits_shared_root():
         for other in [s, discarded, updated]:
             assert s == other
             assert not (s != other)
+            assert s <= other
+            assert s >= other
+            assert not (s < other)
+            assert not (s > other)
             assert other == s
             assert not (other != s)
+            assert other <= s
+            assert other >= s
+            assert not (other < s)
+            assert not (other > s)
 
 
 def test_element_identity_short_circuits_comparison():
@@ -317,6 +326,10 @@ def test_element_comparison_errors_propagate():
         lambda: s1.discard(k2),
         lambda: s1 == s2,
         lambda: s1 != s2,
+        lambda: s1 <= s2,
+        lambda: s1 >= s2,
+        lambda: s1 < s2.insert(0),
+        lambda: s1.insert(0) > s2,
         lambda: s1 == {k2},
         lambda: s1 | s2,
         lambda: s1 & s2,
@@ -330,3 +343,25 @@ def test_element_comparison_errors_propagate():
             op()
 
     assert k1 in s1
+
+
+@pytest.mark.parametrize("compare", [lt, le, gt, ge])
+@pytest.mark.parametrize("other", [[1], (1,), {1: 2}, 1])
+def test_ordering_against_non_set_raises_type_error(compare, other):
+    with pytest.raises(TypeError):
+        compare(HashTrieSet([1]), other)
+
+
+def test_ordering_against_other_set_types():
+    s = HashTrieSet([1, 2])
+    assert s < frozenset([1, 2, 3])
+    assert s <= frozenset([1, 2])
+    assert s > frozenset([1])
+    assert s >= frozenset([1, 2])
+    assert s == {1: "a", 2: "b"}.keys()
+    assert s < {1: "a", 2: "b", 3: "c"}.keys()
+    assert s > {1: "a"}.keys()
+    assert not (s < HashTrieSet([1, 3, 4]))
+    assert not (s <= HashTrieSet([1, 3]))
+    assert not (s > HashTrieSet([3]))
+    assert not (s >= HashTrieSet([1, 3]))
