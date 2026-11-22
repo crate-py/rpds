@@ -175,7 +175,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x64, x86] # x86 is not supported by pypy
+        include:
+          - target: x64
+            python-version: |
+              3.11
+              3.12
+              3.13
+              3.14
+              3.15
+              pypy3.11
+              pypy3.12
+            interpreters: 3.11 3.12 3.13 3.14 3.15 pypy3.11 pypy3.12
+          - target: x86 # x86 is not supported by pypy
+            python-version: |
+              3.11
+              3.12
+              3.13
+              3.14
+              3.15
+            interpreters: 3.11 3.12 3.13 3.14 3.15
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -183,19 +201,14 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: |
-            3.11
-            3.12
-            3.13
-            3.14
-            3.15
+          python-version: ${{ matrix.python-version }}
           allow-prereleases: true
           architecture: ${{ matrix.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --interpreter '3.11 3.12 3.13 3.14 3.15'
+          args: --release --out dist --interpreter '${{ matrix.interpreters }}'
           sccache: ${{ github.ref_type != 'tag' }} # zizmor: ignore[cache-poisoning]
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
